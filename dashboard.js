@@ -1,0 +1,1 @@
+document.write("Hello This is School Dashboard");
