@@ -9,13 +9,14 @@
 <body>
     <script src="script1.js"></script>
     <script>
-        var name ="lisa"; //string type
-        var age= 21; //INT
-        var teacher = true; //boolean
-        document.write('Name' + name + '<br>') //string concatention
-        
+      function showMessage(){
+        var name=document.getElementById("myText").value
+        document.write("your name is " + name);
+      }
     </script>
     <P>Priyanka Created html file</P>
+    <input type="text" id="myText">
+    <input type="submit" onclick="showMessage()">
 </body>
 
 </html>
