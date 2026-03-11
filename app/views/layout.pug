@@ -1,0 +1,41 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title Smart School
+    meta(name="description", content="Smart School platform for students, teachers, and administrators.")
+    link(rel="preconnect", href="https://fonts.googleapis.com")
+    link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin="anonymous")
+    link(href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap", rel="stylesheet")
+
+    // Optional CSS
+    link(rel="stylesheet", href="/css/style.css")
+
+  body
+
+    // ===== Navbar =====
+    nav.navbar
+      .nav-container
+        a.logo(href="/") Smart School
+
+        ul.nav-links
+          li
+            a(href="/") Overview
+          li
+            a(href="#modules") Modules
+          li
+            a(href="#journey") Journey
+          li
+            a(href="#contact") Contact
+
+    // ===== Page Content =====
+    main.main-shell
+      block content
+
+    // ===== Footer =====
+    footer.footer#contact
+      .footer-inner
+        p.footer-title Smart School
+        p.footer-copy Connected learning for classrooms, teachers, and administrators.
+        p.footer-meta © 2026 Smart School. All rights reserved.

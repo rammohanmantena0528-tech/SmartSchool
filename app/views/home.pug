@@ -1,0 +1,76 @@
+extends layout
+
+block content
+
+  // ===== HERO SECTION =====
+  section.hero#overview
+    .hero-container
+      .hero-text
+        h1 Smart School Management System
+        p Smart School helps teachers and administrators manage attendance, marks, timetables, and school notices from one secure portal, making day-to-day operations faster and more reliable.
+        .hero-buttons
+          a.btn-primary(href="/register") Get Started
+          a.btn-secondary(href="#contact-us") Contact Us
+
+      .hero-image
+        img(src="/images/hero.png", alt="Hero Image")
+
+  section.features#modules
+    .section-head
+      p.kicker Core Modules
+      h2 Built for every role in your school
+    .feature-grid
+      article.feature-card
+        h3 Student Management
+        p Manage student records, class mapping, and profile details in one secure space.
+      article.feature-card
+        h3 Attendance Tracking
+        p Mark attendance quickly and maintain clear daily records for each class.
+      article.feature-card
+        h3 Marks and Reports
+        p Publish assessments, generate report cards, and monitor performance trends.
+      article.feature-card
+        h3 Communication Hub
+        p Share circulars, alerts, and announcements across teachers, students, and school offices.
+
+  section.journey#journey
+    .section-head
+      p.kicker How It Flows
+      h2 A simple school day, digitized
+    .steps
+      .step
+        span.step-number 01
+        h3 Capture classroom updates
+        p Teachers record attendance and assignments from a single workspace.
+      .step
+        span.step-number 02
+        h3 Keep staff aligned
+        p Teachers and admins receive timely updates and track academic progress.
+      .step
+        span.step-number 03
+        h3 Make data-driven decisions
+        p School admins use clear insights to improve outcomes and planning.
+
+  section.stats
+    .stats-grid
+      .stat
+        h3 30+
+        p Classes Managed
+      .stat
+        h3 2,000+
+        p Student Profiles
+      .stat
+        h3 99.9%
+        p Record Accuracy
+      .stat
+        h3 24x7
+        p System Availability
+
+  section.cta
+    h2 Ready to modernize your school operations?
+    p Start with Smart School and scale as your institution grows.
+    a.btn-primary(href="#overview") Back to Top
+
+  section.cta#contact-us
+    h2 Contact Us
+    p For admissions and platform support, reach us at smartschool@school.edu
