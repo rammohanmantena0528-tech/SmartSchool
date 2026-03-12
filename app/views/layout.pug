@@ -3,7 +3,7 @@ html(lang="en")
   head
     meta(charset="UTF-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
-    title Smart School
+    title= pageTitle || "Smart School"
     meta(name="description", content="Smart School platform for students, teachers, and administrators.")
     link(rel="preconnect", href="https://fonts.googleapis.com")
     link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin="anonymous")
@@ -20,14 +20,9 @@ html(lang="en")
         a.logo(href="/") Smart School
 
         ul.nav-links
-          li
-            a(href="/") Overview
-          li
-            a(href="#modules") Modules
-          li
-            a(href="#journey") Journey
-          li
-            a(href="#contact") Contact
+          each navItem in (navLinks || [{ href: "/", label: "Overview" }, { href: "/#modules", label: "Modules" }, { href: "/#journey", label: "Journey" }, { href: "/#contact", label: "Contact" }])
+            li
+              a(href=navItem.href)= navItem.label
 
     // ===== Page Content =====
     main.main-shell
