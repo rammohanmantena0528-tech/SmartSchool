@@ -1,0 +1,12 @@
+aside.side-nav
+  .side-nav-inner
+    p.side-nav-kicker Smart School
+    h2.side-nav-title Teacher Panel
+
+    ul.side-nav-links
+      li
+        a.side-nav-link(class=activeSidebar === "dashboard" ? "active" : "", href=`/teachers/dashboard?teacher_id=${teacherId}`) Dashboard
+      li
+        a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/teachers/attendance?teacher_id=${teacherId}`) Attendance
+
+    a.side-nav-logout(href="/goodbye") Logout

@@ -1,71 +1,76 @@
 extends layout
 
 block content
-  section.dashboard-wrap
-    .dashboard-head
-      .dashboard-intro
-        p.kicker Teacher Workspace
-        h1 Teacher Attendance
-        p Mark attendance for #{attendancePage.className} on #{attendancePage.today}.
-      .dashboard-class
-        p.label Teacher
-        p.value= attendancePage.teacherName
-        p.label Current Class
-        p.value= attendancePage.className
+  .portal-shell
+    - const teacherId = attendancePage.teacherId
+    - const activeSidebar = "attendance"
+    include teachersidebar
 
-    article.dashboard-panel
-      h2 Attendance Marking
-      if attendancePage.message
-        p.form-success= attendancePage.message
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Workspace
+          h1 Teacher Attendance
+          p Mark attendance for #{attendancePage.className} on #{attendancePage.today}.
+        .dashboard-class
+          p.label Teacher
+          p.value= attendancePage.teacherName
+          p.label Current Class
+          p.value= attendancePage.className
 
-      form.filter-form(method="get", action="/teachers/attendance")
-        input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
-        .filter-grid
-          label.form-field
-            span Date
-            input(type="date", name="date", value=attendancePage.selectedDate)
-          label.form-field
-            span Subject
-            select(name="subject")
-              each subject in attendancePage.subjects
-                option(value=subject, selected=subject === attendancePage.selectedSubject)= subject
-          .filter-actions
-            button.btn-secondary(type="submit") Load List
+      article.dashboard-panel
+        h2 Attendance Marking
+        if attendancePage.message
+          p.form-success= attendancePage.message
 
-      form(method="post", action="/teachers/attendance")
-        input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
-        input(type="hidden", name="date", value=attendancePage.selectedDate)
-        input(type="hidden", name="subject", value=attendancePage.selectedSubject)
-        table.schedule-table.attendance-table
-          thead
-            tr
-              th Student
-              th Roll Number
-              th Subject
-              th Status
-              th Remarks
-          tbody
-            each student in attendancePage.students
+        form.filter-form(method="get", action="/teachers/attendance")
+          input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
+          .filter-grid
+            label.form-field
+              span Date
+              input(type="date", name="date", value=attendancePage.selectedDate)
+            label.form-field
+              span Subject
+              select(name="subject")
+                each subject in attendancePage.subjects
+                  option(value=subject, selected=subject === attendancePage.selectedSubject)= subject
+            .filter-actions
+              button.btn-secondary(type="submit") Load List
+
+        form(method="post", action="/teachers/attendance")
+          input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
+          input(type="hidden", name="date", value=attendancePage.selectedDate)
+          input(type="hidden", name="subject", value=attendancePage.selectedSubject)
+          table.schedule-table.attendance-table
+            thead
               tr
-                td= student.student_name
-                td= student.roll_number
-                td= attendancePage.selectedSubject
-                td
-                  select.attendance-select(name=`status_${student.student_id}`)
-                    option(value="") Select
-                    option(value="Present", selected=student.status === "Present") Present
-                    option(value="Absent", selected=student.status === "Absent") Absent
-                    option(value="Late", selected=student.status === "Late") Late
-                td
-                  input.attendance-remarks(
-                    type="text"
-                    name=`remarks_${student.student_id}`
-                    value=student.remarks || ""
-                    placeholder="Optional remark"
-                  )
+                th Student
+                th Roll Number
+                th Subject
+                th Status
+                th Remarks
+            tbody
+              each student in attendancePage.students
+                tr
+                  td= student.student_name
+                  td= student.roll_number
+                  td= attendancePage.selectedSubject
+                  td
+                    select.attendance-select(name=`status_${student.student_id}`)
+                      option(value="") Select
+                      option(value="Present", selected=student.status === "Present") Present
+                      option(value="Absent", selected=student.status === "Absent") Absent
+                      option(value="Late", selected=student.status === "Late") Late
+                  td
+                    input.attendance-remarks(
+                      type="text"
+                      name=`remarks_${student.student_id}`
+                      value=student.remarks || ""
+                      placeholder="Optional remark"
+                    )
 
-        .dashboard-actions
-          button.btn-primary(type="submit") Save Attendance
+          .dashboard-actions
+            button.btn-primary(type="submit") Save Attendance
 
-    .dashboard-actions
-      a.btn-secondary(href=`/teachers/dashboard?teacher_id=${attendancePage.teacherId}`) Back to Dashboard
+      .dashboard-actions
+        a.btn-secondary(href=`/teachers/dashboard?teacher_id=${attendancePage.teacherId}`) Back to Dashboard

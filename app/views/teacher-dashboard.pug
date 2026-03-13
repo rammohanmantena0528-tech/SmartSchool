@@ -1,57 +1,62 @@
 extends layout
 
 block content
-  section.dashboard-wrap
-    .dashboard-head
-      .dashboard-intro
-        p.kicker Teacher Workspace
-        h1 Teacher Dashboard
-        p Welcome back #{dashboard.teacherName}. Here is your teaching snapshot for #{dashboard.today}.
-      .dashboard-class
-        p.label Current Class
-        p.value= dashboard.className
+  .portal-shell
+    - const teacherId = dashboard.teacherId
+    - const activeSidebar = "dashboard"
+    include teachersidebar
 
-    .dashboard-stats
-      each stat in dashboard.stats
-        article.dashboard-card
-          p.card-label= stat.label
-          p.card-value= stat.value
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Workspace
+          h1 Teacher Dashboard
+          p Welcome back #{dashboard.teacherName}. Here is your teaching snapshot for #{dashboard.today}.
+        .dashboard-class
+          p.label Current Class
+          p.value= dashboard.className
 
-    .dashboard-grid
-      article.dashboard-panel
-        h2 Today's Schedule
-        table.schedule-table
-          thead
-            tr
-              th Time
-              th Subject
-              th Room
-              th Status
-          tbody
-            each period in dashboard.periods
+      .dashboard-stats
+        each stat in dashboard.stats
+          article.dashboard-card
+            p.card-label= stat.label
+            p.card-value= stat.value
+
+      .dashboard-grid
+        article.dashboard-panel
+          h2 Today's Schedule
+          table.schedule-table
+            thead
               tr
-                td= period.time
-                td= period.subject
-                td= period.room
-                td
-                  span.status-pill(class=period.status.toLowerCase())= period.status
+                th Time
+                th Subject
+                th Room
+                th Status
+            tbody
+              each period in dashboard.periods
+                tr
+                  td= period.time
+                  td= period.subject
+                  td= period.room
+                  td
+                    span.status-pill(class=period.status.toLowerCase())= period.status
 
-      article.dashboard-panel
-        h2 Task Checklist
-        ul.dashboard-list
-          each todo in dashboard.todos
-            li
-              if dashboard.doneTodos && dashboard.doneTodos.includes(todo)
-                span.status-pill.completed Done
-              else
-                span.status-pill.next Pending
-              |  #{todo}
+        article.dashboard-panel
+          h2 Task Checklist
+          ul.dashboard-list
+            each todo in dashboard.todos
+              li
+                if dashboard.doneTodos && dashboard.doneTodos.includes(todo)
+                  span.status-pill.completed Done
+                else
+                  span.status-pill.next Pending
+                |  #{todo}
 
-        h2.notice-title Attendance
-        p.assignment-meta Open the class attendance records in a separate page.
-        a.btn-primary.attendance-link(href=`/teachers/attendance?teacher_id=${dashboard.teacherId}`) View Attendance
+          h2.notice-title Attendance
+          p.assignment-meta Open the class attendance records in a separate page.
+          a.btn-primary.attendance-link(href=`/teachers/attendance?teacher_id=${dashboard.teacherId}`) View Attendance
 
-        h2.notice-title School Notices
-        ul.dashboard-list.notice-list
-          each notice in dashboard.notices
-            li= notice
+          h2.notice-title School Notices
+          ul.dashboard-list.notice-list
+            each notice in dashboard.notices
+              li= notice

@@ -1,35 +1,40 @@
 extends layout
 
 block content
-  section.dashboard-wrap
-    .dashboard-head
-      .dashboard-intro
-        p.kicker Student Workspace
-        h1 Student Attendance
-        p Attendance details for #{attendancePage.studentName} as of #{attendancePage.today}.
-      .dashboard-class
-        p.label Class
-        p.value= attendancePage.className
-        p.label Roll Number
-        p.value= attendancePage.rollNumber
+  .portal-shell
+    - const studentId = attendancePage.studentId
+    - const activeSidebar = "attendance"
+    include studentsidebar
 
-    article.dashboard-panel
-      h2 Attendance Record
-      table.schedule-table.attendance-table
-        thead
-          tr
-            th Date
-            th Subject
-            th Status
-            th Remarks
-        tbody
-          each entry in attendancePage.attendance
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 Student Attendance
+          p Attendance details for #{attendancePage.studentName} as of #{attendancePage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= attendancePage.className
+          p.label Roll Number
+          p.value= attendancePage.rollNumber
+
+      article.dashboard-panel
+        h2 Attendance Record
+        table.schedule-table.attendance-table
+          thead
             tr
-              td= entry.day
-              td= entry.subject
-              td
-                span.status-pill(class=entry.status.toLowerCase().replace(/[^a-z]/g, "-"))= entry.status
-              td= entry.remarks || "-"
+              th Date
+              th Subject
+              th Status
+              th Remarks
+          tbody
+            each entry in attendancePage.attendance
+              tr
+                td= entry.day
+                td= entry.subject
+                td
+                  span.status-pill(class=entry.status.toLowerCase().replace(/[^a-z]/g, "-"))= entry.status
+                td= entry.remarks || "-"
 
-    .dashboard-actions
-      a.btn-secondary(href=`/students/dashboard?student_id=${attendancePage.studentId}`) Back to Dashboard
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${attendancePage.studentId}`) Back to Dashboard

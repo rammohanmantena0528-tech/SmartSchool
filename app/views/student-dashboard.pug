@@ -1,59 +1,64 @@
 extends layout
 
 block content
-  section.dashboard-wrap
-    .dashboard-head
-      .dashboard-intro
-        p.kicker Student Workspace
-        h1 Student Dashboard
-        p Welcome back #{dashboard.studentName}. Here is your study snapshot for #{dashboard.today}.
-      .dashboard-class
-        p.label Class
-        p.value= dashboard.className
-        p.label Roll Number
-        p.value= dashboard.rollNumber
+  .portal-shell
+    - const studentId = dashboard.studentId
+    - const activeSidebar = "dashboard"
+    include studentsidebar
 
-    .dashboard-stats
-      each stat in dashboard.stats
-        article.dashboard-card
-          p.card-label= stat.label
-          p.card-value= stat.value
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 Student Dashboard
+          p Welcome back #{dashboard.studentName}. Here is your study snapshot for #{dashboard.today}.
+        .dashboard-class
+          p.label Class
+          p.value= dashboard.className
+          p.label Roll Number
+          p.value= dashboard.rollNumber
 
-    .dashboard-grid
-      article.dashboard-panel
-        h2 Today's Schedule
-        table.schedule-table
-          thead
-            tr
-              th Time
-              th Subject
-              th Room
-              th Status
-          tbody
-            each period in dashboard.periods
+      .dashboard-stats
+        each stat in dashboard.stats
+          article.dashboard-card
+            p.card-label= stat.label
+            p.card-value= stat.value
+
+      .dashboard-grid
+        article.dashboard-panel
+          h2 Today's Schedule
+          table.schedule-table
+            thead
               tr
-                td= period.time
-                td= period.subject
-                td= period.room
-                td
-                  span.status-pill(class=period.status.toLowerCase())= period.status
+                th Time
+                th Subject
+                th Room
+                th Status
+            tbody
+              each period in dashboard.periods
+                tr
+                  td= period.time
+                  td= period.subject
+                  td= period.room
+                  td
+                    span.status-pill(class=period.status.toLowerCase())= period.status
 
-      article.dashboard-panel
-        h2 Attendance Record
-        p.assignment-meta View the full attendance history in a separate page.
-        a.btn-primary.attendance-link(href=`/students/attendance?student_id=${dashboard.studentId}`) Open Attendance
+        article.dashboard-panel
+          h2 Attendance Record
+          p.assignment-meta View the full attendance history in a separate page.
+          a.btn-primary.attendance-link(href=`/students/attendance?student_id=${dashboard.studentId}`) Open Attendance
 
-      article.dashboard-panel
-        h2 Assignment Tracker
-        ul.dashboard-list.assignment-list
-          each assignment in dashboard.assignments
-            li.assignment-item
-              .assignment-copy
-                p.assignment-title= assignment.title
-                p.assignment-meta #{assignment.subject} • #{assignment.due}
-              span.status-pill(class=assignment.progress.toLowerCase().replace(/[^a-z]/g, "-"))= assignment.progress
+        article.dashboard-panel
+          h2 Assignment Tracker
+          ul.dashboard-list.assignment-list
+            each assignment in dashboard.assignments
+              li.assignment-item
+                .assignment-copy
+                  p.assignment-title= assignment.title
+                  p.assignment-meta #{assignment.subject} • #{assignment.due}
+                span.status-pill(class=assignment.progress.toLowerCase().replace(/[^a-z]/g, "-"))= assignment.progress
 
-        h2.notice-title School Notices
-        ul.dashboard-list.notice-list
-          each notice in dashboard.notices
-            li= notice
+          h2.notice-title School Notices
+          ul.dashboard-list.notice-list
+            each notice in dashboard.notices
+              li= notice
