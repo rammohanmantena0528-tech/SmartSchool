@@ -521,6 +521,21 @@ a {
   color: #315ca8;
 }
 
+.status-pill.pending {
+  background: #fff2cf;
+  color: #7a5400;
+}
+
+.status-pill.in-progress {
+  background: #e8f0ff;
+  color: #315ca8;
+}
+
+.status-pill.submitted {
+  background: #e4f6eb;
+  color: #1d764c;
+}
+
 .dashboard-list {
   list-style: none;
 }
@@ -536,6 +551,27 @@ a {
 
 .notice-title {
   margin-top: 16px;
+}
+
+.assignment-list li {
+  border-top: 1px dashed #d8e6de;
+  padding: 12px 0;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.assignment-title {
+  font-weight: 800;
+}
+
+.assignment-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .notice-list li {
@@ -564,5 +600,10 @@ a {
 
   .schedule-table {
     font-size: 0.88rem;
+  }
+
+  .assignment-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
