@@ -137,7 +137,7 @@ app.get("/students/dashboard", async (req, res) => {
                 status_label AS status
              FROM student_schedule
              WHERE student_id = ?
-             ORDER BY sort_order, start_time`,
+            ORDER BY sort_order, start_time`,
             [studentId]
         );
 
@@ -173,6 +173,7 @@ app.get("/students/dashboard", async (req, res) => {
                 today,
                 stats,
                 periods,
+                studentId,
                 assignments,
                 notices: notices.map((row) => row.notice_text)
             }
@@ -180,6 +181,61 @@ app.get("/students/dashboard", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load student dashboard.");
+    }
+});
+
+app.get("/students/attendance", async (req, res) => {
+    const studentId = Number(req.query.student_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        const studentRows = await db.query(
+            "SELECT id, full_name, class_name, roll_number FROM students WHERE id = ? LIMIT 1",
+            [studentId]
+        );
+
+        if (!studentRows[0]) {
+            return res.status(404).send("Student not found");
+        }
+
+        const attendance = await db.query(
+            `SELECT
+                DATE_FORMAT(attendance_date, '%b %e, %Y') AS day,
+                subject_name AS subject,
+                status_label AS status,
+                remarks
+             FROM student_attendance
+             WHERE student_id = ?
+             ORDER BY attendance_date DESC, id DESC`,
+            [studentId]
+        );
+
+        res.render("student-attendance", {
+            pageTitle: "Student Attendance | Smart School",
+            navLinks: [
+                { href: "/", label: "Overview" },
+                { href: `/students/dashboard?student_id=${studentId}`, label: "Student Dashboard" },
+                { href: `/students/attendance?student_id=${studentId}`, label: "Attendance" },
+                { href: "/teachers/dashboard", label: "Teacher Dashboard" },
+                { href: "/#contact", label: "Contact" }
+            ],
+            attendancePage: {
+                studentId,
+                studentName: studentRows[0].full_name,
+                className: studentRows[0].class_name,
+                rollNumber: studentRows[0].roll_number,
+                today,
+                attendance
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load student attendance.");
     }
 });
 

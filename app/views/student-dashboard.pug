@@ -39,6 +39,11 @@ block content
                   span.status-pill(class=period.status.toLowerCase())= period.status
 
       article.dashboard-panel
+        h2 Attendance Record
+        p.assignment-meta View the full attendance history in a separate page.
+        a.btn-primary.attendance-link(href=`/students/attendance?student_id=${dashboard.studentId}`) Open Attendance
+
+      article.dashboard-panel
         h2 Assignment Tracker
         ul.dashboard-list.assignment-list
           each assignment in dashboard.assignments
