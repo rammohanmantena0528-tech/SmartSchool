@@ -19,10 +19,15 @@ html(lang="en")
       .nav-container
         a.logo(href="/") Smart School
 
-        ul.nav-links
-          each navItem in (navLinks || [{ href: "/", label: "Overview" }, { href: "/#modules", label: "Modules" }, { href: "/#journey", label: "Journey" }, { href: "/#contact", label: "Contact" }])
-            li
-              a(href=navItem.href)= navItem.label
+        .nav-menu
+          ul.nav-links
+            each navItem in (navLinks || [{ href: "/", label: "Overview" }, { href: "/#modules", label: "Modules" }, { href: "/#journey", label: "Journey" }, { href: "/#contact", label: "Contact" }])
+              li
+                a(href=navItem.href)= navItem.label
+
+          .nav-auth
+            a.btn-secondary.nav-auth-link(href="/login") Login
+            a.btn-primary.nav-auth-link(href="/register") Register
 
     // ===== Page Content =====
     main.main-shell

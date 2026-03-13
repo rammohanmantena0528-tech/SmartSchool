@@ -49,6 +49,14 @@ a {
   gap: 20px;
 }
 
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .logo {
   font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
@@ -76,6 +84,16 @@ a {
 .nav-links a:hover {
   background: #deebe3;
   color: var(--brand-dark);
+}
+
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-auth-link {
+  padding: 9px 14px;
 }
 
 .main-shell {
@@ -623,8 +641,18 @@ a {
     flex-direction: column;
   }
 
+  .nav-menu {
+    width: 100%;
+    align-items: flex-start;
+  }
+
   .nav-links {
     gap: 8px;
+  }
+
+  .nav-auth {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .hero-container {
