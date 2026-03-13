@@ -29,6 +29,7 @@ DROP TABLE IF EXISTS `teacher_stats`;
 DROP TABLE IF EXISTS `teachers`;
 DROP TABLE IF EXISTS `student_notices`;
 DROP TABLE IF EXISTS `student_assignments`;
+DROP TABLE IF EXISTS `student_attendance`;
 DROP TABLE IF EXISTS `student_schedule`;
 DROP TABLE IF EXISTS `student_stats`;
 DROP TABLE IF EXISTS `students`;
@@ -109,6 +110,19 @@ CREATE TABLE `student_stats` (
   CONSTRAINT `fk_student_stats_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `student_attendance` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `student_id` int NOT NULL,
+  `attendance_date` date NOT NULL,
+  `subject_name` varchar(120) NOT NULL,
+  `status_label` varchar(40) NOT NULL,
+  `remarks` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_student_attendance_student_id` (`student_id`),
+  KEY `idx_student_attendance_date` (`attendance_date`),
+  CONSTRAINT `fk_student_attendance_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `student_schedule` (
   `id` int NOT NULL AUTO_INCREMENT,
   `student_id` int NOT NULL,
@@ -180,6 +194,12 @@ INSERT INTO `student_stats` (`student_id`, `stat_label`, `stat_value`, `sort_ord
 (1, 'Assignments Due', '3', 2),
 (1, 'Average Score', '88%', 3),
 (1, 'Unread Notices', '2', 4);
+
+INSERT INTO `student_attendance` (`student_id`, `attendance_date`, `subject_name`, `status_label`, `remarks`) VALUES
+(1, '2026-03-13', 'Mathematics', 'Present', 'On time'),
+(1, '2026-03-13', 'Science', 'Present', 'Lab session attended'),
+(1, '2026-03-12', 'English', 'Late', 'Joined after assembly'),
+(1, '2026-03-11', 'Computer Lab', 'Absent', 'Medical leave submitted');
 
 INSERT INTO `student_schedule` (`student_id`, `start_time`, `end_time`, `subject_name`, `room_name`, `status_label`, `sort_order`) VALUES
 (1, '08:30:00', '09:15:00', 'Mathematics', 'Room 204', 'Completed', 1),
