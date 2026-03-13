@@ -6,6 +6,7 @@ var app = express();
 
 // Add static files location
 app.use(express.static("static"));
+app.use(express.urlencoded({ extended: true }));
 
 
 // pug engine
@@ -14,6 +15,14 @@ app.set("views", "./app/views");
  
 // Get the functions in the db.js file to use
 const db = require('./services/db');
+
+function getIsoDate(value) {
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+    }
+
+    return new Date().toISOString().slice(0, 10);
+}
 
 // Create a route for root - /
 // app.get("/", function(req, res) {
@@ -89,6 +98,7 @@ app.get("/teachers/dashboard", async (req, res) => {
                 { href: "/#contact", label: "Contact" }
             ],
             dashboard: {
+                teacherId,
                 teacherName: teacherRows[0].full_name,
                 className: teacherRows[0].class_name,
                 today,
@@ -102,6 +112,130 @@ app.get("/teachers/dashboard", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load teacher dashboard.");
+    }
+});
+
+app.get("/teachers/attendance", async (req, res) => {
+    const teacherId = Number(req.query.teacher_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const selectedDate = getIsoDate(req.query.date);
+        const subjectRows = await db.query(
+            `SELECT DISTINCT subject_name AS subject
+             FROM teacher_schedule
+             WHERE teacher_id = ?
+             ORDER BY subject_name`,
+            [teacherId]
+        );
+        const selectedSubject = req.query.subject || subjectRows[0]?.subject || "Mathematics";
+
+        const studentRows = await db.query(
+            `SELECT
+                s.full_name AS student_name,
+                s.id AS student_id,
+                s.roll_number,
+                sa.id AS attendance_id,
+                sa.status_label AS status,
+                sa.remarks
+             FROM students s
+             LEFT JOIN student_attendance sa
+               ON sa.student_id = s.id
+              AND sa.attendance_date = ?
+              AND sa.subject_name = ?
+             WHERE s.class_name = ?
+             ORDER BY s.roll_number ASC`,
+            [selectedDate, selectedSubject, teacherRows[0].class_name]
+        );
+
+        res.render("teacher-attendance", {
+            pageTitle: "Teacher Attendance | Smart School",
+            navLinks: [
+                { href: "/", label: "Overview" },
+                { href: `/teachers/dashboard?teacher_id=${teacherId}`, label: "Teacher Dashboard" },
+                { href: `/teachers/attendance?teacher_id=${teacherId}`, label: "Attendance" },
+                { href: "/students/dashboard", label: "Student Dashboard" },
+                { href: "/#contact", label: "Contact" }
+            ],
+            attendancePage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                today,
+                selectedDate,
+                selectedSubject,
+                subjects: subjectRows.map((row) => row.subject),
+                students: studentRows,
+                message: req.query.saved === "1" ? "Attendance saved." : null
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load teacher attendance.");
+    }
+});
+
+app.post("/teachers/attendance", async (req, res) => {
+    const teacherId = Number(req.body.teacher_id) || 1;
+    const selectedDate = getIsoDate(req.body.date);
+    const selectedSubject = typeof req.body.subject === "string" && req.body.subject.trim()
+        ? req.body.subject.trim()
+        : "Mathematics";
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const students = await db.query(
+            "SELECT id FROM students WHERE class_name = ? ORDER BY roll_number ASC",
+            [teacherRows[0].class_name]
+        );
+
+        for (const student of students) {
+            const status = req.body[`status_${student.id}`];
+            const remarksValue = req.body[`remarks_${student.id}`];
+            const remarks = typeof remarksValue === "string" ? remarksValue.trim() : "";
+
+            if (!status) {
+                continue;
+            }
+
+            await db.query(
+                `INSERT INTO student_attendance (student_id, attendance_date, subject_name, status_label, remarks)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                   status_label = VALUES(status_label),
+                   remarks = VALUES(remarks)`,
+                [student.id, selectedDate, selectedSubject, status, remarks || null]
+            );
+        }
+
+        res.redirect(
+            `/teachers/attendance?teacher_id=${teacherId}&date=${selectedDate}&subject=${encodeURIComponent(selectedSubject)}&saved=1`
+        );
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not save teacher attendance.");
     }
 });
 

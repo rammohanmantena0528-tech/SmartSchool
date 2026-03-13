@@ -120,6 +120,7 @@ CREATE TABLE `student_attendance` (
   PRIMARY KEY (`id`),
   KEY `idx_student_attendance_student_id` (`student_id`),
   KEY `idx_student_attendance_date` (`attendance_date`),
+  UNIQUE KEY `uniq_student_attendance_entry` (`student_id`,`attendance_date`,`subject_name`),
   CONSTRAINT `fk_student_attendance_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -165,7 +166,9 @@ INSERT INTO `teachers` (`id`, `full_name`, `email`, `class_name`) VALUES
 (1, 'Ms. Anita Rao', 'anita.rao@smartschool.edu', 'Class 8 - A');
 
 INSERT INTO `students` (`id`, `full_name`, `email`, `class_name`, `roll_number`) VALUES
-(1, 'Aarav Sharma', 'aarav.sharma@smartschool.edu', 'Class 8 - A', '8A-12');
+(1, 'Aarav Sharma', 'aarav.sharma@smartschool.edu', 'Class 8 - A', '8A-12'),
+(2, 'Diya Verma', 'diya.verma@smartschool.edu', 'Class 8 - A', '8A-07'),
+(3, 'Rohan Iyer', 'rohan.iyer@smartschool.edu', 'Class 8 - A', '8A-18');
 
 INSERT INTO `teacher_stats` (`teacher_id`, `stat_label`, `stat_value`, `sort_order`) VALUES
 (1, 'Students Present', '38/40', 1),
@@ -199,7 +202,11 @@ INSERT INTO `student_attendance` (`student_id`, `attendance_date`, `subject_name
 (1, '2026-03-13', 'Mathematics', 'Present', 'On time'),
 (1, '2026-03-13', 'Science', 'Present', 'Lab session attended'),
 (1, '2026-03-12', 'English', 'Late', 'Joined after assembly'),
-(1, '2026-03-11', 'Computer Lab', 'Absent', 'Medical leave submitted');
+(1, '2026-03-11', 'Computer Lab', 'Absent', 'Medical leave submitted'),
+(2, '2026-03-13', 'Mathematics', 'Present', 'Participated well'),
+(2, '2026-03-13', 'Science', 'Late', 'Arrived 10 minutes late'),
+(3, '2026-03-13', 'Mathematics', 'Absent', 'Parent informed class teacher'),
+(3, '2026-03-13', 'Science', 'Present', 'Joined after first period');
 
 INSERT INTO `student_schedule` (`student_id`, `start_time`, `end_time`, `subject_name`, `room_name`, `status_label`, `sort_order`) VALUES
 (1, '08:30:00', '09:15:00', 'Mathematics', 'Room 204', 'Completed', 1),

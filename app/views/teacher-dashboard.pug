@@ -47,6 +47,10 @@ block content
                 span.status-pill.next Pending
               |  #{todo}
 
+        h2.notice-title Attendance
+        p.assignment-meta Open the class attendance records in a separate page.
+        a.btn-primary.attendance-link(href=`/teachers/attendance?teacher_id=${dashboard.teacherId}`) View Attendance
+
         h2.notice-title School Notices
         ul.dashboard-list.notice-list
           each notice in dashboard.notices
