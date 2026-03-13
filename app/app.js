@@ -43,6 +43,32 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/login", (req, res) => {
+    res.render("auth", {
+        pageTitle: "Login | Smart School",
+        authMode: "login",
+        navLinks: [
+            { href: "/", label: "Overview" },
+            { href: "/#modules", label: "Modules" },
+            { href: "/register", label: "Register" },
+            { href: "/#contact", label: "Contact" }
+        ]
+    });
+});
+
+app.get("/register", (req, res) => {
+    res.render("auth", {
+        pageTitle: "Register | Smart School",
+        authMode: "register",
+        navLinks: [
+            { href: "/", label: "Overview" },
+            { href: "/#modules", label: "Modules" },
+            { href: "/login", label: "Login" },
+            { href: "/#contact", label: "Contact" }
+        ]
+    });
+});
+
 app.get("/teachers/dashboard", async (req, res) => {
     const teacherId = Number(req.query.teacher_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
