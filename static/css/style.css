@@ -277,6 +277,25 @@ a {
   margin-top: 20px;
 }
 
+.auth-feedback {
+  border-radius: 14px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.auth-feedback-error {
+  background: #fff1f0;
+  border: 1px solid #f2c2bd;
+  color: #9a2f23;
+}
+
+.auth-feedback-success {
+  background: #eef9f1;
+  border: 1px solid #b9e0c5;
+  color: #1e6a3b;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

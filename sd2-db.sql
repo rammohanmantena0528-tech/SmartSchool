@@ -33,6 +33,7 @@ DROP TABLE IF EXISTS `student_attendance`;
 DROP TABLE IF EXISTS `student_schedule`;
 DROP TABLE IF EXISTS `student_stats`;
 DROP TABLE IF EXISTS `students`;
+DROP TABLE IF EXISTS `Users`;
 
 CREATE TABLE `teachers` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -51,6 +52,21 @@ CREATE TABLE `students` (
   `roll_number` varchar(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_student_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `Users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `full_name` varchar(120) NOT NULL,
+  `email` varchar(120) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` varchar(20) NOT NULL,
+  `class_name` varchar(60) DEFAULT NULL,
+  `roll_number` varchar(20) DEFAULT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `about` text,
+  `related_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `teacher_stats` (

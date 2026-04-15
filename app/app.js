@@ -1,6 +1,6 @@
 // Import express.js
 const express = require("express");
-
+const { User } = require("./models/user");
 // Create express app
 var app = express();
 
@@ -16,12 +16,107 @@ app.set("views", "./app/views");
 // Get the functions in the db.js file to use
 const db = require('./services/db');
 
+const cookieParser = require("cookie-parser");
+const session = require('express-session');
+const bodyParser = require('body-parser');
+const oneDay = 1000 * 60 * 60 * 24;
+const sessionMiddleware = session({
+    secret: "driveyourpassion",
+    saveUninitialized: true,
+    cookie: { maxAge: oneDay },
+    resave: false
+});
+app.use(cookieParser());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(sessionMiddleware);
+
 function getIsoDate(value) {
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return value;
     }
 
     return new Date().toISOString().slice(0, 10);
+}
+
+const VALID_ROLES = new Set(["student", "teacher", "admin"]);
+
+function getAuthNavLinks(mode) {
+    return [
+        { href: "/", label: "Overview" },
+        { href: "/#modules", label: "Modules" },
+        { href: mode === "register" ? "/login" : "/register", label: mode === "register" ? "Login" : "Register" },
+        { href: "/#contact", label: "Contact" }
+    ];
+}
+
+function renderAuthPage(res, authMode, options = {}) {
+    const authValues = options.authValues || {};
+
+    res.status(options.statusCode || 200).render("auth", {
+        pageTitle: `${authMode === "register" ? "Register" : "Login"} | Smart School`,
+        authMode,
+        navLinks: getAuthNavLinks(authMode),
+        authError: options.authError || null,
+        authSuccess: options.authSuccess || null,
+        authValues
+    });
+}
+
+function normalizeText(value) {
+    return typeof value === "string" ? value.trim() : "";
+}
+
+async function ensureRoleRecord(role, details) {
+    if (role === "teacher") {
+        const existingTeachers = await db.query(
+            "SELECT id FROM teachers WHERE email = ? LIMIT 1",
+            [details.email]
+        );
+
+        if (existingTeachers[0]) {
+            return existingTeachers[0].id;
+        }
+
+        const result = await db.query(
+            "INSERT INTO teachers (full_name, email, class_name) VALUES (?, ?, ?)",
+            [details.fullName, details.email, details.className]
+        );
+
+        return result.insertId;
+    }
+
+    if (role === "student") {
+        const existingStudents = await db.query(
+            "SELECT id FROM students WHERE email = ? LIMIT 1",
+            [details.email]
+        );
+
+        if (existingStudents[0]) {
+            return existingStudents[0].id;
+        }
+
+        const result = await db.query(
+            "INSERT INTO students (full_name, email, class_name, roll_number) VALUES (?, ?, ?, ?)",
+            [details.fullName, details.email, details.className, details.rollNumber]
+        );
+
+        return result.insertId;
+    }
+
+    return null;
+}
+
+function getRedirectForUser(user) {
+    if (user.role === "teacher" && user.relatedId) {
+        return `/teachers/dashboard?teacher_id=${user.relatedId}`;
+    }
+
+    if (user.role === "student" && user.relatedId) {
+        return `/students/dashboard?student_id=${user.relatedId}`;
+    }
+
+    return "/";
 }
 
 // Create a route for root - /
@@ -44,29 +139,21 @@ app.get("/", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-    res.render("auth", {
-        pageTitle: "Login | Smart School",
-        authMode: "login",
-        navLinks: [
-            { href: "/", label: "Overview" },
-            { href: "/#modules", label: "Modules" },
-            { href: "/register", label: "Register" },
-            { href: "/#contact", label: "Contact" }
-        ]
+    if (req.session.uid) {
+        return res.redirect(req.session.redirectTo || "/");
+    }
+
+    renderAuthPage(res, "login", {
+        authSuccess: req.query.registered === "1" ? "Account created. Please sign in." : null
     });
 });
 
 app.get("/register", (req, res) => {
-    res.render("auth", {
-        pageTitle: "Register | Smart School",
-        authMode: "register",
-        navLinks: [
-            { href: "/", label: "Overview" },
-            { href: "/#modules", label: "Modules" },
-            { href: "/login", label: "Login" },
-            { href: "/#contact", label: "Contact" }
-        ]
-    });
+    if (req.session.uid) {
+        return res.redirect(req.session.redirectTo || "/");
+    }
+
+    renderAuthPage(res, "register");
 });
 
 app.get("/teachers/dashboard", async (req, res) => {
@@ -138,6 +225,137 @@ app.get("/teachers/dashboard", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load teacher dashboard.");
+    }
+});
+
+app.post('/authenticate', async (req, res) => {
+    try {
+        const email = normalizeText(req.body.email).toLowerCase();
+        const password = req.body.password;
+        const requestedRole = normalizeText(req.body.role).toLowerCase();
+
+        if (!email || !password) {
+            return renderAuthPage(res, "login", {
+                statusCode: 400,
+                authError: "Email and password are required.",
+                authValues: { email, role: requestedRole }
+            });
+        }
+
+        const user = await User.findByEmail(email);
+        if (!user) {
+            return renderAuthPage(res, "login", {
+                statusCode: 401,
+                authError: "Invalid email or password.",
+                authValues: { email, role: requestedRole }
+            });
+        }
+
+        if (requestedRole && VALID_ROLES.has(requestedRole) && user.role !== requestedRole) {
+            return renderAuthPage(res, "login", {
+                statusCode: 401,
+                authError: "Selected role does not match this account.",
+                authValues: { email, role: requestedRole }
+            });
+        }
+
+        const match = await user.authenticate(password);
+        if (!match) {
+            return renderAuthPage(res, "login", {
+                statusCode: 401,
+                authError: "Invalid email or password.",
+                authValues: { email, role: requestedRole }
+            });
+        }
+
+        const redirectTo = getRedirectForUser(user);
+
+        req.session.uid = user.id;
+        req.session.loggedIn = true;
+        req.session.role = user.role;
+        req.session.redirectTo = redirectTo;
+        req.session.relatedId = user.relatedId || null;
+        res.redirect(redirectTo);
+    } catch (err) {
+        console.error(`Error while authenticating user:`, err.message);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    try {
+        req.session.destroy();
+        res.redirect('/login');
+    } catch (err) {
+        console.error("Error logging out:", err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.post('/register', async (req, res) => {
+    try {
+        const registrationData = {
+            fullName: normalizeText(req.body.full_name),
+            email: normalizeText(req.body.email).toLowerCase(),
+            password: req.body.password,
+            role: normalizeText(req.body.role).toLowerCase(),
+            className: normalizeText(req.body.class_name),
+            rollNumber: normalizeText(req.body.roll_number),
+            phone: normalizeText(req.body.phone),
+            about: normalizeText(req.body.about)
+        };
+
+        if (!registrationData.fullName || !registrationData.email || !registrationData.password || !registrationData.role) {
+            return renderAuthPage(res, "register", {
+                statusCode: 400,
+                authError: "Full name, role, email, and password are required.",
+                authValues: registrationData
+            });
+        }
+
+        if (!VALID_ROLES.has(registrationData.role)) {
+            return renderAuthPage(res, "register", {
+                statusCode: 400,
+                authError: "Please choose a valid role.",
+                authValues: registrationData
+            });
+        }
+
+        if (registrationData.role !== "admin" && !registrationData.className) {
+            return renderAuthPage(res, "register", {
+                statusCode: 400,
+                authError: "Class or department is required for student and teacher accounts.",
+                authValues: registrationData
+            });
+        }
+
+        if (registrationData.role === "student" && !registrationData.rollNumber) {
+            return renderAuthPage(res, "register", {
+                statusCode: 400,
+                authError: "Roll number is required for student accounts.",
+                authValues: registrationData
+            });
+        }
+
+        const existingUser = await User.findByEmail(registrationData.email);
+        if (existingUser) {
+            return renderAuthPage(res, "register", {
+                statusCode: 409,
+                authError: "An account with this email already exists.",
+                authValues: registrationData
+            });
+        }
+
+        const relatedId = await ensureRoleRecord(registrationData.role, registrationData);
+        await User.create({
+            ...registrationData,
+            relatedId
+        });
+
+        return res.redirect("/login?registered=1");
+    } catch (err) {
+        console.error(`Error while registering user:`, err.message);
+        res.status(500).send('Internal Server Error');
     }
 });
 

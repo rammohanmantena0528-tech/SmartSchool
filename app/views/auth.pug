@@ -27,48 +27,57 @@ block content
           a.auth-tab(class=authMode === "login" ? "active" : "", href="/login") Login
           a.auth-tab(class=authMode === "register" ? "active" : "", href="/register") Register
 
+        if authError
+          p.auth-feedback.auth-feedback-error= authError
+
+        if authSuccess
+          p.auth-feedback.auth-feedback-success= authSuccess
+
         if authMode === "register"
-          form.auth-form(action="#", method="post")
+          form.auth-form(action="/register", method="post")
             .form-grid
               .form-field
                 label(for="full_name") Full Name
-                input#full_name(type="text", name="full_name", placeholder="Enter full name")
+                input#full_name(type="text", name="full_name", placeholder="Enter full name", value=(authValues && authValues.fullName) || "")
               .form-field
                 label(for="role") Role
                 select#role(name="role")
-                  option(value="student") Student
-                  option(value="teacher") Teacher
-                  option(value="admin") Administrator
+                  option(value="student", selected=((authValues && authValues.role) || "student") === "student") Student
+                  option(value="teacher", selected=(authValues && authValues.role) === "teacher") Teacher
+                  option(value="admin", selected=(authValues && authValues.role) === "admin") Administrator
               .form-field
                 label(for="class_name") Class / Department
-                input#class_name(type="text", name="class_name", placeholder="Grade 10 - A")
+                input#class_name(type="text", name="class_name", placeholder="Grade 10 - A", value=(authValues && authValues.className) || "")
+              .form-field
+                label(for="roll_number") Roll Number
+                input#roll_number(type="text", name="roll_number", placeholder="Required for students", value=(authValues && authValues.rollNumber) || "")
               .form-field
                 label(for="email") Email Address
-                input#email(type="email", name="email", placeholder="name@school.edu")
+                input#email(type="email", name="email", placeholder="name@school.edu", value=(authValues && authValues.email) || "")
               .form-field
                 label(for="phone") Phone Number
-                input#phone(type="tel", name="phone", placeholder="+91 98765 43210")
+                input#phone(type="tel", name="phone", placeholder="+91 98765 43210", value=(authValues && authValues.phone) || "")
               .form-field
                 label(for="password") Password
                 input#password(type="password", name="password", placeholder="Create password")
             .form-field
               label(for="about") Notes
-              textarea#about(name="about", rows="4", placeholder="Any onboarding notes or guardian details")
+              textarea#about(name="about", rows="4", placeholder="Any onboarding notes or guardian details")= (authValues && authValues.about) || ""
             button.btn-primary.auth-submit(type="submit") Create Account
             p.auth-switch
               | Already have an account? 
               a(href="/login") Sign in here
         else
-          form.auth-form(action="#", method="post")
+          form.auth-form(action="/authenticate", method="post")
             .form-field
               label(for="login_role") Login As
               select#login_role(name="role")
-                option(value="student") Student
-                option(value="teacher") Teacher
-                option(value="admin") Administrator
+                option(value="student", selected=((authValues && authValues.role) || "student") === "student") Student
+                option(value="teacher", selected=(authValues && authValues.role) === "teacher") Teacher
+                option(value="admin", selected=(authValues && authValues.role) === "admin") Administrator
             .form-field
               label(for="login_email") Email Address
-              input#login_email(type="email", name="email", placeholder="name@school.edu")
+              input#login_email(type="email", name="email", placeholder="name@school.edu", value=(authValues && authValues.email) || "")
             .form-field
               label(for="login_password") Password
               input#login_password(type="password", name="password", placeholder="Enter password")
