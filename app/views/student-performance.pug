@@ -1,0 +1,55 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = performancePage.studentId
+    - const activeSidebar = "performance"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 My Performance
+          p Review your subject-wise progress as of #{performancePage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= performancePage.className
+          p.label Roll Number
+          p.value= performancePage.rollNumber
+
+      .dashboard-stats
+        article.dashboard-card
+          p.card-label Assessments
+          p.card-value= performancePage.summary.totalAssessments
+        article.dashboard-card
+          p.card-label Overall Average
+          p.card-value= performancePage.summary.overallAverage
+        article.dashboard-card
+          p.card-label Strong Subjects
+          p.card-value= performancePage.summary.strongSubjects
+
+      article.dashboard-panel
+        h2 Subject Progress
+        if performancePage.rows.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Subject
+                th Assessments
+                th Average
+                th Best Score
+                th Progress
+            tbody
+              each row in performancePage.rows
+                tr
+                  td= row.subject
+                  td= row.assessmentsCount
+                  td= row.averagePercent
+                  td= row.bestPercent
+                  td= row.progressBand
+        else
+          p.form-helper No marks are available yet to generate a performance report.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${performancePage.studentId}`) Back to Dashboard

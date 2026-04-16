@@ -10,5 +10,11 @@ aside.side-nav
         a.side-nav-link(class=activeSidebar === "profile" ? "active" : "", href=`/students/profile?student_id=${studentId}`) Profile
       li
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/students/attendance?student_id=${studentId}`) Attendance
+      li
+        a.side-nav-link(class=activeSidebar === "marks" ? "active" : "", href=`/students/marks?student_id=${studentId}`) Marks
+      li
+        a.side-nav-link(class=activeSidebar === "performance" ? "active" : "", href=`/students/performance?student_id=${studentId}`) Performance
+      li
+        a.side-nav-link(class=activeSidebar === "timetable" ? "active" : "", href=`/students/timetable?student_id=${studentId}`) Timetable
 
     a.side-nav-logout(href="/logout") Logout

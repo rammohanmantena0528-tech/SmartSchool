@@ -83,7 +83,18 @@ const ATTENDANCE_MESSAGES = {
     created: "Attendance saved for the selected day.",
     updated: "Attendance updated for the selected day."
 };
+const MARKS_MESSAGES = {
+    created: "Marks uploaded for the selected assessment.",
+    updated: "Marks updated for the selected assessment.",
+    missing_title: "Enter an assessment title before loading or uploading marks."
+};
+const TIMETABLE_MESSAGES = {
+    created: "Timetable entry added.",
+    updated: "Timetable entry updated.",
+    deleted: "Timetable entry removed."
+};
 let announcementTableReady = false;
+let marksTableReady = false;
 
 function getAuthNavLinks(mode) {
     return [
@@ -158,6 +169,28 @@ function getAttendanceMessage(query) {
     return null;
 }
 
+function getMarksMessage(query) {
+    if (query.saved && MARKS_MESSAGES[query.saved]) {
+        return {
+            type: "success",
+            text: MARKS_MESSAGES[query.saved]
+        };
+    }
+
+    return null;
+}
+
+function getTimetableMessage(query) {
+    if (query.saved && TIMETABLE_MESSAGES[query.saved]) {
+        return {
+            type: "success",
+            text: TIMETABLE_MESSAGES[query.saved]
+        };
+    }
+
+    return null;
+}
+
 function getNavLinksForRequest(req) {
     if (!req.session.uid) {
         return getDefaultNavLinks();
@@ -209,6 +242,89 @@ async function ensureAnnouncementTable() {
          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
     );
     announcementTableReady = true;
+}
+
+async function ensureMarksTable() {
+    if (marksTableReady) {
+        return;
+    }
+
+    await db.query(
+        `CREATE TABLE IF NOT EXISTS student_marks (
+            id int NOT NULL AUTO_INCREMENT,
+            student_id int NOT NULL,
+            subject_name varchar(120) NOT NULL,
+            assessment_type varchar(40) NOT NULL,
+            assessment_title varchar(160) NOT NULL,
+            assessment_date date NOT NULL,
+            max_marks int NOT NULL,
+            scored_marks decimal(6,2) NOT NULL,
+            remarks varchar(255) DEFAULT NULL,
+            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_student_marks_student_id (student_id),
+            KEY idx_student_marks_date (assessment_date),
+            UNIQUE KEY uniq_student_marks_entry (student_id, subject_name, assessment_type, assessment_title),
+            CONSTRAINT fk_student_marks_student
+                FOREIGN KEY (student_id) REFERENCES students (id)
+                ON DELETE CASCADE
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
+    );
+    marksTableReady = true;
+}
+
+async function syncStudentScheduleForClass(className, teacherId) {
+    const students = await db.query(
+        "SELECT id FROM students WHERE class_name = ? ORDER BY roll_number ASC",
+        [className]
+    );
+    const scheduleRows = await db.query(
+        `SELECT start_time, end_time, subject_name, room_name, status_label, sort_order
+         FROM teacher_schedule
+         WHERE teacher_id = ?
+         ORDER BY sort_order, start_time, id`,
+        [teacherId]
+    );
+
+    if (!students.length) {
+        return;
+    }
+
+    await db.query(
+        `DELETE ss
+         FROM student_schedule ss
+         INNER JOIN students s
+           ON s.id = ss.student_id
+         WHERE s.class_name = ?`,
+        [className]
+    );
+
+    for (const student of students) {
+        for (const row of scheduleRows) {
+            await db.query(
+                `INSERT INTO student_schedule (
+                    student_id,
+                    start_time,
+                    end_time,
+                    subject_name,
+                    room_name,
+                    status_label,
+                    sort_order
+                 )
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    student.id,
+                    row.start_time,
+                    row.end_time,
+                    row.subject_name,
+                    row.room_name,
+                    row.status_label,
+                    row.sort_order
+                ]
+            );
+        }
+    }
 }
 
 async function getTeacherProfile(teacherId) {
@@ -838,14 +954,9 @@ app.get("/teachers/attendance", requireLogin, async (req, res) => {
         }
 
         const selectedDate = getIsoDate(req.query.date);
-        const subjectRows = await db.query(
-            `SELECT DISTINCT subject_name AS subject
-             FROM teacher_schedule
-             WHERE teacher_id = ?
-             ORDER BY subject_name`,
-            [teacherId]
-        );
-        const selectedSubject = req.query.subject || subjectRows[0]?.subject || "Mathematics";
+        const selectedSubject = typeof req.query.subject === "string" && req.query.subject.trim()
+            ? req.query.subject.trim()
+            : "Mathematics";
 
         const studentRows = await db.query(
             `SELECT
@@ -875,7 +986,6 @@ app.get("/teachers/attendance", requireLogin, async (req, res) => {
                 today,
                 selectedDate,
                 selectedSubject,
-                subjects: subjectRows.map((row) => row.subject),
                 students: studentRows,
                 hasExistingAttendance,
                 message: getAttendanceMessage(req.query)
@@ -971,14 +1081,6 @@ app.get("/teachers/attendance-reports", requireLogin, async (req, res) => {
             return res.status(404).send("Teacher not found");
         }
 
-        const subjectRows = await db.query(
-            `SELECT DISTINCT subject_name AS subject
-             FROM teacher_schedule
-             WHERE teacher_id = ?
-             ORDER BY subject_name`,
-            [teacherId]
-        );
-
         const selectedStartDate = getIsoDate(req.query.start_date || defaultStartDate);
         const selectedEndDate = getIsoDate(req.query.end_date || todayIso);
         const selectedSubject = typeof req.query.subject === "string" && req.query.subject.trim()
@@ -1062,7 +1164,6 @@ app.get("/teachers/attendance-reports", requireLogin, async (req, res) => {
                 selectedStartDate,
                 selectedEndDate,
                 selectedSubject,
-                subjects: ["All Subjects", ...subjectRows.map((row) => row.subject)],
                 rows,
                 summary: {
                     ...summary,
@@ -1076,8 +1177,461 @@ app.get("/teachers/attendance-reports", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/teachers/performance-reports", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.query.teacher_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        await ensureMarksTable();
+
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const selectedSubject = typeof req.query.subject === "string" && req.query.subject.trim()
+            ? req.query.subject.trim()
+            : "All Subjects";
+        const selectedAssessmentType = req.query.assessment_type === "Assignment"
+            ? "Assignment"
+            : req.query.assessment_type === "Exam"
+                ? "Exam"
+                : "All Types";
+
+        const reportParams = [teacherRows[0].class_name];
+        let subjectFilter = "";
+        let typeFilter = "";
+
+        if (selectedSubject !== "All Subjects") {
+            subjectFilter = " AND sm.subject_name = ?";
+            reportParams.push(selectedSubject);
+        }
+
+        if (selectedAssessmentType !== "All Types") {
+            typeFilter = " AND sm.assessment_type = ?";
+            reportParams.push(selectedAssessmentType);
+        }
+
+        const rows = await db.query(
+            `SELECT
+                s.id AS student_id,
+                s.full_name AS student_name,
+                s.roll_number,
+                COUNT(sm.id) AS assessments_count,
+                ROUND(AVG((sm.scored_marks / NULLIF(sm.max_marks, 0)) * 100), 1) AS average_percent
+             FROM students s
+             LEFT JOIN student_marks sm
+               ON sm.student_id = s.id
+             WHERE s.class_name = ?
+               ${subjectFilter}
+               ${typeFilter}
+             GROUP BY s.id, s.full_name, s.roll_number
+             ORDER BY s.roll_number ASC`,
+            reportParams
+        );
+
+        const reportRows = [];
+        for (const row of rows) {
+            const latestParams = [row.student_id];
+            let latestSubjectFilter = "";
+            let latestTypeFilter = "";
+
+            if (selectedSubject !== "All Subjects") {
+                latestSubjectFilter = " AND subject_name = ?";
+                latestParams.push(selectedSubject);
+            }
+
+            if (selectedAssessmentType !== "All Types") {
+                latestTypeFilter = " AND assessment_type = ?";
+                latestParams.push(selectedAssessmentType);
+            }
+
+            const latestRow = await db.query(
+                `SELECT
+                    assessment_date,
+                    ROUND((scored_marks / NULLIF(max_marks, 0)) * 100, 1) AS latest_percent
+                 FROM student_marks
+                 WHERE student_id = ?
+                   ${latestSubjectFilter}
+                   ${latestTypeFilter}
+                 ORDER BY assessment_date DESC, id DESC
+                 LIMIT 1`,
+                latestParams
+            );
+
+            const avg = row.average_percent === null ? null : Number(row.average_percent);
+            const latest = latestRow[0]?.latest_percent === null || latestRow[0]?.latest_percent === undefined
+                ? null
+                : Number(latestRow[0].latest_percent);
+            const band = avg === null
+                ? "No Data"
+                : avg >= 85
+                    ? "Excellent"
+                    : avg >= 70
+                        ? "Good"
+                        : avg >= 50
+                            ? "Needs Support"
+                            : "At Risk";
+
+            reportRows.push({
+                ...row,
+                averagePercent: avg === null ? "-" : `${avg}%`,
+                latestPercent: latest === null ? "-" : `${latest}%`,
+                performanceBand: band,
+                latestAssessmentDate: latestRow[0]?.assessment_date
+                    ? new Date(latestRow[0].assessment_date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric"
+                    })
+                    : "-"
+            });
+        }
+
+        const completedReports = reportRows.filter((row) => row.assessments_count > 0).length;
+        const classAverageRaw = reportRows
+            .filter((row) => row.average_percent !== null)
+            .reduce((sum, row, _, arr) => sum + Number(row.average_percent) / arr.length, 0);
+
+        res.render("teacher-performance-reports", {
+            pageTitle: "Teacher Performance Reports | Smart School",
+            reportPage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                today,
+                selectedSubject,
+                selectedAssessmentType,
+                rows: reportRows,
+                summary: {
+                    totalStudents: reportRows.length,
+                    completedReports,
+                    classAverage: completedReports ? `${Math.round(classAverageRaw)}%` : "0%",
+                    highPerformers: reportRows.filter((row) => row.performanceBand === "Excellent").length
+                }
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load performance reports.");
+    }
+});
+
+app.get("/teachers/timetable", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.query.teacher_id) || 1;
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const periods = await db.query(
+            `SELECT
+                id,
+                TIME_FORMAT(start_time, '%H:%i') AS start_time,
+                TIME_FORMAT(end_time, '%H:%i') AS end_time,
+                subject_name,
+                room_name,
+                status_label,
+                sort_order
+             FROM teacher_schedule
+             WHERE teacher_id = ?
+             ORDER BY sort_order, start_time, id`,
+            [teacherId]
+        );
+
+        const editingId = Number(req.query.edit_id) || null;
+        const editingPeriod = periods.find((period) => period.id === editingId) || null;
+
+        res.render("teacher-timetable", {
+            pageTitle: "Teacher Timetable | Smart School",
+            timetablePage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                periods,
+                editingPeriod,
+                message: getTimetableMessage(req.query)
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load timetable manager.");
+    }
+});
+
+app.post("/teachers/timetable", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const periodId = Number(req.body.period_id) || null;
+    const startTime = typeof req.body.start_time === "string" ? req.body.start_time : "";
+    const endTime = typeof req.body.end_time === "string" ? req.body.end_time : "";
+    const subjectName = typeof req.body.subject_name === "string" ? req.body.subject_name.trim() : "";
+    const roomName = typeof req.body.room_name === "string" ? req.body.room_name.trim() : "";
+    const statusLabel = typeof req.body.status_label === "string" && req.body.status_label.trim()
+        ? req.body.status_label.trim()
+        : "Upcoming";
+    const sortOrderRaw = Number(req.body.sort_order);
+    const sortOrder = Number.isFinite(sortOrderRaw) ? sortOrderRaw : 0;
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        if (periodId) {
+            await db.query(
+                `UPDATE teacher_schedule
+                 SET start_time = ?, end_time = ?, subject_name = ?, room_name = ?, status_label = ?, sort_order = ?
+                 WHERE id = ? AND teacher_id = ?`,
+                [startTime, endTime, subjectName, roomName, statusLabel, sortOrder, periodId, teacherId]
+            );
+        } else {
+            await db.query(
+                `INSERT INTO teacher_schedule (
+                    teacher_id,
+                    start_time,
+                    end_time,
+                    subject_name,
+                    room_name,
+                    status_label,
+                    sort_order
+                 )
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [teacherId, startTime, endTime, subjectName, roomName, statusLabel, sortOrder]
+            );
+        }
+
+        await syncStudentScheduleForClass(teacherRows[0].class_name, teacherId);
+        res.redirect(`/teachers/timetable?teacher_id=${teacherId}&saved=${periodId ? "updated" : "created"}`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not save timetable entry.");
+    }
+});
+
+app.post("/teachers/timetable/delete", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const periodId = Number(req.body.period_id) || null;
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        await db.query(
+            "DELETE FROM teacher_schedule WHERE id = ? AND teacher_id = ?",
+            [periodId, teacherId]
+        );
+        await syncStudentScheduleForClass(teacherRows[0].class_name, teacherId);
+        res.redirect(`/teachers/timetable?teacher_id=${teacherId}&saved=deleted`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not delete timetable entry.");
+    }
+});
+
+app.get("/teachers/marks", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.query.teacher_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        await ensureMarksTable();
+
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const selectedSubject = typeof req.query.subject === "string" && req.query.subject.trim()
+            ? req.query.subject.trim()
+            : "Mathematics";
+        const assessmentType = req.query.assessment_type === "Assignment" ? "Assignment" : "Exam";
+        const assessmentTitle = typeof req.query.assessment_title === "string" && req.query.assessment_title.trim()
+            ? req.query.assessment_title.trim()
+            : "";
+        const assessmentDate = getIsoDate(req.query.assessment_date);
+        const maxMarksRaw = Number(req.query.max_marks);
+        const maxMarks = Number.isFinite(maxMarksRaw) && maxMarksRaw > 0 ? maxMarksRaw : 100;
+
+        const studentRows = await db.query(
+            `SELECT
+                s.full_name AS student_name,
+                s.id AS student_id,
+                s.roll_number,
+                sm.id AS mark_id,
+                sm.scored_marks,
+                sm.remarks
+             FROM students s
+             LEFT JOIN student_marks sm
+               ON sm.student_id = s.id
+              AND sm.subject_name = ?
+              AND sm.assessment_type = ?
+              AND sm.assessment_title = ?
+             WHERE s.class_name = ?
+             ORDER BY s.roll_number ASC`,
+            [selectedSubject, assessmentType, assessmentTitle, teacherRows[0].class_name]
+        );
+
+        res.render("teacher-marks", {
+            pageTitle: "Teacher Marks Upload | Smart School",
+            marksPage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                today,
+                selectedSubject,
+                assessmentType,
+                assessmentTitle,
+                assessmentDate,
+                maxMarks,
+                students: studentRows,
+                hasExistingMarks: Boolean(assessmentTitle) && studentRows.some((student) => Boolean(student.mark_id)),
+                message: getMarksMessage(req.query),
+                hasAssessmentTitle: Boolean(assessmentTitle)
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load marks upload.");
+    }
+});
+
+app.post("/teachers/marks", requireLogin, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const selectedSubject = typeof req.body.subject === "string" && req.body.subject.trim()
+        ? req.body.subject.trim()
+        : "Mathematics";
+    const assessmentType = req.body.assessment_type === "Assignment" ? "Assignment" : "Exam";
+    const assessmentTitle = typeof req.body.assessment_title === "string" ? req.body.assessment_title.trim() : "";
+    const assessmentDate = getIsoDate(req.body.assessment_date);
+    const maxMarksRaw = Number(req.body.max_marks);
+    const maxMarks = Number.isFinite(maxMarksRaw) && maxMarksRaw > 0 ? maxMarksRaw : 100;
+
+    try {
+        await ensureMarksTable();
+
+        if (!assessmentTitle) {
+            return res.redirect(
+                `/teachers/marks?teacher_id=${teacherId}&subject=${encodeURIComponent(selectedSubject)}&assessment_type=${encodeURIComponent(assessmentType)}&assessment_date=${assessmentDate}&max_marks=${maxMarks}&saved=missing_title`
+            );
+        }
+
+        const teacherRows = await db.query(
+            "SELECT id, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const students = await db.query(
+            "SELECT id FROM students WHERE class_name = ? ORDER BY roll_number ASC",
+            [teacherRows[0].class_name]
+        );
+        const existingMarks = await db.query(
+            `SELECT id
+             FROM student_marks
+             WHERE subject_name = ?
+               AND assessment_type = ?
+               AND assessment_title = ?
+               AND student_id IN (
+                   SELECT id
+                   FROM students
+                   WHERE class_name = ?
+               )`,
+            [selectedSubject, assessmentType, assessmentTitle, teacherRows[0].class_name]
+        );
+        const hadExistingMarks = existingMarks.length > 0;
+
+        for (const student of students) {
+            const scoreRaw = req.body[`score_${student.id}`];
+            const remarksValue = req.body[`remarks_${student.id}`];
+            const remarks = typeof remarksValue === "string" ? remarksValue.trim() : "";
+
+            if (scoreRaw === undefined || scoreRaw === "") {
+                continue;
+            }
+
+            const scoredMarks = Number(scoreRaw);
+            if (!Number.isFinite(scoredMarks) || scoredMarks < 0) {
+                continue;
+            }
+
+            await db.query(
+                `INSERT INTO student_marks (
+                    student_id,
+                    subject_name,
+                    assessment_type,
+                    assessment_title,
+                    assessment_date,
+                    max_marks,
+                    scored_marks,
+                    remarks
+                 )
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                   assessment_date = VALUES(assessment_date),
+                   max_marks = VALUES(max_marks),
+                   scored_marks = VALUES(scored_marks),
+                   remarks = VALUES(remarks)`,
+                [
+                    student.id,
+                    selectedSubject,
+                    assessmentType,
+                    assessmentTitle,
+                    assessmentDate,
+                    maxMarks,
+                    scoredMarks,
+                    remarks || null
+                ]
+            );
+        }
+
+        res.redirect(
+            `/teachers/marks?teacher_id=${teacherId}&subject=${encodeURIComponent(selectedSubject)}&assessment_type=${encodeURIComponent(assessmentType)}&assessment_title=${encodeURIComponent(assessmentTitle)}&assessment_date=${assessmentDate}&max_marks=${maxMarks}&saved=${hadExistingMarks ? "updated" : "created"}`
+        );
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not save marks.");
+    }
+});
+
 app.get("/students/dashboard", requireLogin, async (req, res) => {
-    const studentId = Number(req.query.student_id) || 1;
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
@@ -1123,6 +1677,19 @@ app.get("/students/dashboard", requireLogin, async (req, res) => {
              ORDER BY sort_order, id`,
             [studentId]
         );
+        await ensureMarksTable();
+        const marksPreview = await db.query(
+            `SELECT
+                subject_name AS subject,
+                assessment_title AS title,
+                scored_marks AS score,
+                max_marks AS maxMarks
+             FROM student_marks
+             WHERE student_id = ?
+             ORDER BY assessment_date DESC, id DESC
+             LIMIT 4`,
+            [studentId]
+        );
 
         const notices = await db.query(
             "SELECT notice_text FROM student_notices WHERE student_id = ? ORDER BY notice_date DESC, id DESC",
@@ -1153,6 +1720,7 @@ app.get("/students/dashboard", requireLogin, async (req, res) => {
                 periods,
                 studentId,
                 assignments,
+                marksPreview,
                 announcements,
                 notices: notices.map((row) => row.notice_text)
             }
@@ -1275,6 +1843,193 @@ app.get("/students/attendance", requireLogin, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load student attendance.");
+    }
+});
+
+app.get("/students/marks", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        await ensureMarksTable();
+
+        const studentRows = await db.query(
+            "SELECT id, full_name, class_name, roll_number FROM students WHERE id = ? LIMIT 1",
+            [studentId]
+        );
+
+        if (!studentRows[0]) {
+            return res.status(404).send("Student not found");
+        }
+
+        const marks = await db.query(
+            `SELECT
+                subject_name AS subject,
+                assessment_type AS assessmentType,
+                assessment_title AS title,
+                DATE_FORMAT(assessment_date, '%b %e, %Y') AS assessmentDate,
+                scored_marks AS score,
+                max_marks AS maxMarks,
+                remarks
+             FROM student_marks
+             WHERE student_id = ?
+             ORDER BY assessment_date DESC, id DESC`,
+            [studentId]
+        );
+
+        res.render("student-marks", {
+            pageTitle: "Student Marks | Smart School",
+            marksPage: {
+                studentId,
+                studentName: studentRows[0].full_name,
+                className: studentRows[0].class_name,
+                rollNumber: studentRows[0].roll_number,
+                today,
+                marks
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load student marks.");
+    }
+});
+
+app.get("/students/performance", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        await ensureMarksTable();
+
+        const studentRows = await db.query(
+            "SELECT id, full_name, class_name, roll_number FROM students WHERE id = ? LIMIT 1",
+            [studentId]
+        );
+
+        if (!studentRows[0]) {
+            return res.status(404).send("Student not found");
+        }
+
+        const subjectRows = await db.query(
+            `SELECT
+                subject_name AS subject,
+                COUNT(id) AS assessments_count,
+                ROUND(AVG((scored_marks / NULLIF(max_marks, 0)) * 100), 1) AS average_percent,
+                ROUND(MAX((scored_marks / NULLIF(max_marks, 0)) * 100), 1) AS best_percent
+             FROM student_marks
+             WHERE student_id = ?
+             GROUP BY subject_name
+             ORDER BY subject_name ASC`,
+            [studentId]
+        );
+
+        const summaryRow = await db.query(
+            `SELECT
+                COUNT(id) AS total_assessments,
+                ROUND(AVG((scored_marks / NULLIF(max_marks, 0)) * 100), 1) AS overall_average
+             FROM student_marks
+             WHERE student_id = ?`,
+            [studentId]
+        );
+
+        const summary = summaryRow[0] || { total_assessments: 0, overall_average: null };
+        const rows = subjectRows.map((row) => {
+            const average = row.average_percent === null ? null : Number(row.average_percent);
+            const best = row.best_percent === null ? null : Number(row.best_percent);
+            return {
+                subject: row.subject,
+                assessmentsCount: Number(row.assessments_count) || 0,
+                averagePercent: average === null ? "-" : `${average}%`,
+                bestPercent: best === null ? "-" : `${best}%`,
+                progressBand: average === null
+                    ? "No Data"
+                    : average >= 85
+                        ? "Excellent"
+                        : average >= 70
+                            ? "Good"
+                            : average >= 50
+                                ? "Needs Support"
+                                : "At Risk"
+            };
+        });
+
+        res.render("student-performance", {
+            pageTitle: "Student Performance | Smart School",
+            performancePage: {
+                studentId,
+                studentName: studentRows[0].full_name,
+                className: studentRows[0].class_name,
+                rollNumber: studentRows[0].roll_number,
+                today,
+                rows,
+                summary: {
+                    totalAssessments: Number(summary.total_assessments) || 0,
+                    overallAverage: summary.overall_average === null ? "0%" : `${Number(summary.overall_average)}%`,
+                    strongSubjects: rows.filter((row) => row.progressBand === "Excellent").length
+                }
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load student performance.");
+    }
+});
+
+app.get("/students/timetable", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    try {
+        const studentRows = await db.query(
+            "SELECT id, full_name, class_name, roll_number FROM students WHERE id = ? LIMIT 1",
+            [studentId]
+        );
+
+        if (!studentRows[0]) {
+            return res.status(404).send("Student not found");
+        }
+
+        const periods = await db.query(
+            `SELECT
+                CONCAT(TIME_FORMAT(start_time, '%H:%i'), ' - ', TIME_FORMAT(end_time, '%H:%i')) AS time,
+                subject_name AS subject,
+                room_name AS room,
+                status_label AS status
+             FROM student_schedule
+             WHERE student_id = ?
+             ORDER BY sort_order, start_time, id`,
+            [studentId]
+        );
+
+        res.render("student-timetable", {
+            pageTitle: "Student Timetable | Smart School",
+            timetablePage: {
+                studentId,
+                studentName: studentRows[0].full_name,
+                className: studentRows[0].class_name,
+                rollNumber: studentRows[0].roll_number,
+                today,
+                periods
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load student timetable.");
     }
 });
 

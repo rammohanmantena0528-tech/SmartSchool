@@ -14,5 +14,11 @@ aside.side-nav
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/teachers/attendance?teacher_id=${teacherId}`) Attendance
       li
         a.side-nav-link(class=activeSidebar === "attendance-reports" ? "active" : "", href=`/teachers/attendance-reports?teacher_id=${teacherId}`) Attendance Reports
+      li
+        a.side-nav-link(class=activeSidebar === "performance-reports" ? "active" : "", href=`/teachers/performance-reports?teacher_id=${teacherId}`) Performance Reports
+      li
+        a.side-nav-link(class=activeSidebar === "marks" ? "active" : "", href=`/teachers/marks?teacher_id=${teacherId}`) Marks Upload
+      li
+        a.side-nav-link(class=activeSidebar === "timetable" ? "active" : "", href=`/teachers/timetable?teacher_id=${teacherId}`) Timetable
 
     a.side-nav-logout(href="/logout") Logout

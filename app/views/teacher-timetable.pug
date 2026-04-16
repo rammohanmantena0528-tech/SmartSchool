@@ -1,0 +1,86 @@
+extends layout
+
+block content
+  .portal-shell
+    - const teacherId = timetablePage.teacherId
+    - const activeSidebar = "timetable"
+    include teachersidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Workspace
+          h1 Timetable Management
+          p Manage class periods so students always see the latest schedule.
+        .dashboard-class
+          p.label Teacher
+          p.value= timetablePage.teacherName
+          p.label Current Class
+          p.value= timetablePage.className
+
+      article.dashboard-panel
+        h2= timetablePage.editingPeriod ? "Edit Period" : "Add Period"
+        if timetablePage.message
+          p.form-success= timetablePage.message.text
+
+        form.filter-form(method="post", action="/teachers/timetable")
+          input(type="hidden", name="teacher_id", value=timetablePage.teacherId)
+          if timetablePage.editingPeriod
+            input(type="hidden", name="period_id", value=timetablePage.editingPeriod.id)
+          .filter-grid.marks-filter-grid
+            label.form-field
+              span Start Time
+              input(type="time", name="start_time", value=timetablePage.editingPeriod ? timetablePage.editingPeriod.start_time : "")
+            label.form-field
+              span End Time
+              input(type="time", name="end_time", value=timetablePage.editingPeriod ? timetablePage.editingPeriod.end_time : "")
+            label.form-field
+              span Subject
+              input(type="text", name="subject_name", value=timetablePage.editingPeriod ? timetablePage.editingPeriod.subject_name : "", placeholder="Mathematics")
+            label.form-field
+              span Room
+              input(type="text", name="room_name", value=timetablePage.editingPeriod ? timetablePage.editingPeriod.room_name : "", placeholder="Room 204")
+            label.form-field
+              span Status
+              select(name="status_label")
+                option(value="Upcoming", selected=!timetablePage.editingPeriod || timetablePage.editingPeriod.status_label === "Upcoming") Upcoming
+                option(value="Next", selected=timetablePage.editingPeriod && timetablePage.editingPeriod.status_label === "Next") Next
+                option(value="Completed", selected=timetablePage.editingPeriod && timetablePage.editingPeriod.status_label === "Completed") Completed
+            label.form-field
+              span Order
+              input(type="number", name="sort_order", value=timetablePage.editingPeriod ? timetablePage.editingPeriod.sort_order : "0", min="0")
+            .filter-actions
+              button.btn-secondary(type="submit")= timetablePage.editingPeriod ? "Update Period" : "Add Period"
+
+      article.dashboard-panel
+        h2 Current Timetable
+        if timetablePage.periods.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Time
+                th Subject
+                th Room
+                th Status
+                th Order
+                th Actions
+            tbody
+              each period in timetablePage.periods
+                tr
+                  td #{period.start_time} - #{period.end_time}
+                  td= period.subject_name
+                  td= period.room_name
+                  td= period.status_label
+                  td= period.sort_order
+                  td
+                    .row-actions
+                      a.btn-secondary(href=`/teachers/timetable?teacher_id=${timetablePage.teacherId}&edit_id=${period.id}`) Edit
+                      form(method="post", action="/teachers/timetable/delete")
+                        input(type="hidden", name="teacher_id", value=timetablePage.teacherId)
+                        input(type="hidden", name="period_id", value=period.id)
+                        button.btn-danger(type="submit") Delete
+        else
+          p.form-helper No timetable entries have been added yet.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/teachers/dashboard?teacher_id=${timetablePage.teacherId}`) Back to Dashboard

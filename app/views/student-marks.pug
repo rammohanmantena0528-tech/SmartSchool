@@ -1,0 +1,46 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = marksPage.studentId
+    - const activeSidebar = "marks"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 My Marks
+          p Check your exam and assignment performance as of #{marksPage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= marksPage.className
+          p.label Roll Number
+          p.value= marksPage.rollNumber
+
+      article.dashboard-panel
+        h2 Performance Summary
+        if marksPage.marks.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Subject
+                th Assessment
+                th Type
+                th Date
+                th Score
+                th Remarks
+            tbody
+              each entry in marksPage.marks
+                tr
+                  td= entry.subject
+                  td= entry.title
+                  td= entry.assessmentType
+                  td= entry.assessmentDate
+                  td= `${entry.score}/${entry.maxMarks}`
+                  td= entry.remarks || "-"
+        else
+          p.form-helper No marks have been uploaded yet.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${marksPage.studentId}`) Back to Dashboard

@@ -1108,6 +1108,15 @@ a {
   grid-template-columns: 1fr 1fr 1fr auto;
 }
 
+.marks-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.marks-filter-grid .filter-actions {
+  grid-column: 3;
+  justify-content: flex-end;
+}
+
 .report-filter-grid .filter-actions {
   align-self: stretch;
 }
@@ -1168,6 +1177,17 @@ a {
   color: var(--muted);
 }
 
+.row-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.row-actions form {
+  margin: 0;
+}
+
 .report-table td:last-child {
   color: var(--ink);
   font-weight: 700;
@@ -1196,6 +1216,15 @@ a {
 
   .report-filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .marks-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .marks-filter-grid .filter-actions {
+    grid-column: auto;
+    justify-content: flex-start;
   }
 
   .report-filter-grid .filter-actions {

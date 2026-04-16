@@ -54,6 +54,18 @@ block content
                 span.status-pill(class=assignment.progress.toLowerCase().replace(/[^a-z]/g, "-"))= assignment.progress
 
         article.dashboard-panel
+          h2 Recent Marks
+          if dashboard.marksPreview.length
+            ul.dashboard-list.assignment-list
+              each mark in dashboard.marksPreview
+                li.assignment-item
+                  .assignment-copy
+                    p.assignment-title= mark.title
+                    p.assignment-meta #{mark.subject} • #{mark.score}/#{mark.maxMarks}
+          else
+            p.profile-notes No marks uploaded yet.
+
+        article.dashboard-panel
           h2 Announcements
           if dashboard.announcements.length
             ul.announcement-list

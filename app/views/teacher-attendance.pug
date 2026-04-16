@@ -37,9 +37,7 @@ block content
               input(type="date", name="date", value=attendancePage.selectedDate)
             label.form-field
               span Subject
-              select(name="subject")
-                each subject in attendancePage.subjects
-                  option(value=subject, selected=subject === attendancePage.selectedSubject)= subject
+              input(type="text", name="subject", value=attendancePage.selectedSubject, placeholder="Enter subject")
             .filter-actions
               button.btn-secondary(type="submit") Load List
 

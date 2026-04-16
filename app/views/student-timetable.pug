@@ -1,0 +1,43 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = timetablePage.studentId
+    - const activeSidebar = "timetable"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 Class Timetable
+          p Check your full class schedule as of #{timetablePage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= timetablePage.className
+          p.label Roll Number
+          p.value= timetablePage.rollNumber
+
+      article.dashboard-panel
+        h2 Weekly Schedule
+        if timetablePage.periods.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Time
+                th Subject
+                th Room
+                th Status
+            tbody
+              each period in timetablePage.periods
+                tr
+                  td= period.time
+                  td= period.subject
+                  td= period.room
+                  td
+                    span.status-pill(class=period.status.toLowerCase().replace(/[^a-z]/g, "-"))= period.status
+        else
+          p.form-helper No timetable entries are available yet.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${timetablePage.studentId}`) Back to Dashboard

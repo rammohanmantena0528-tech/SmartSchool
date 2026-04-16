@@ -1,0 +1,103 @@
+extends layout
+
+block content
+  .portal-shell
+    - const teacherId = marksPage.teacherId
+    - const activeSidebar = "marks"
+    include teachersidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Workspace
+          h1 Marks Upload
+          p Upload exam and assignment marks for #{marksPage.className} so students can review their performance.
+        .dashboard-class
+          p.label Teacher
+          p.value= marksPage.teacherName
+          p.label Current Class
+          p.value= marksPage.className
+
+      article.dashboard-panel
+        if marksPage.hasExistingMarks
+          h2 Update Marks
+        else
+          h2 Upload Marks
+        if marksPage.message
+          p.form-success= marksPage.message.text
+
+        form.filter-form(method="get", action="/teachers/marks")
+          input(type="hidden", name="teacher_id", value=marksPage.teacherId)
+          .filter-grid.marks-filter-grid
+            label.form-field
+              span Subject
+              input(type="text", name="subject", value=marksPage.selectedSubject, placeholder="Enter subject")
+            label.form-field
+              span Assessment Type
+              select(name="assessment_type")
+                option(value="Exam", selected=marksPage.assessmentType === "Exam") Exam
+                option(value="Assignment", selected=marksPage.assessmentType === "Assignment") Assignment
+            label.form-field
+              span Assessment Title
+              input(type="text", name="assessment_title", value=marksPage.assessmentTitle, placeholder="Unit Test 1")
+            label.form-field
+              span Date
+              input(type="date", name="assessment_date", value=marksPage.assessmentDate)
+            label.form-field
+              span Max Marks
+              input(type="number", name="max_marks", value=marksPage.maxMarks, min="1")
+            .filter-actions
+              button.btn-secondary(type="submit") Load Students
+
+        form(method="post", action="/teachers/marks")
+          input(type="hidden", name="teacher_id", value=marksPage.teacherId)
+          input(type="hidden", name="subject", value=marksPage.selectedSubject)
+          input(type="hidden", name="assessment_type", value=marksPage.assessmentType)
+          input(type="hidden", name="assessment_title", value=marksPage.assessmentTitle)
+          input(type="hidden", name="assessment_date", value=marksPage.assessmentDate)
+          input(type="hidden", name="max_marks", value=marksPage.maxMarks)
+          if !marksPage.hasAssessmentTitle
+            p.form-helper Enter an assessment title and click Load Students before uploading marks.
+          else if marksPage.hasExistingMarks
+            p.form-helper Existing marks are loaded below. Edit any score and submit to correct mistakes.
+          else
+            p.form-helper Enter the assessment details above, load the class list, then upload marks for each student.
+
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Student
+                th Roll Number
+                th Score
+                th Remarks
+            tbody
+              each student in marksPage.students
+                tr
+                  td= student.student_name
+                  td= student.roll_number
+                  td
+                    input.attendance-remarks(
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max=marksPage.maxMarks
+                      name=`score_${student.student_id}`
+                      value=student.scored_marks !== null && student.scored_marks !== undefined ? student.scored_marks : ""
+                      placeholder=`Out of ${marksPage.maxMarks}`
+                    )
+                  td
+                    input.attendance-remarks(
+                      type="text"
+                      name=`remarks_${student.student_id}`
+                      value=student.remarks || ""
+                      placeholder="Optional remark"
+                    )
+
+          .dashboard-actions
+            if marksPage.hasExistingMarks
+              button.btn-primary(type="submit") Update Marks
+            else
+              button.btn-primary(type="submit") Upload Marks
+
+      .dashboard-actions
+        a.btn-secondary(href=`/teachers/dashboard?teacher_id=${marksPage.teacherId}`) Back to Dashboard
