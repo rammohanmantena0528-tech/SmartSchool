@@ -12,5 +12,7 @@ aside.side-nav
         a.side-nav-link(class=activeSidebar === "announcements" ? "active" : "", href=`/teachers/announcements?teacher_id=${teacherId}`) Announcements
       li
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/teachers/attendance?teacher_id=${teacherId}`) Attendance
+      li
+        a.side-nav-link(class=activeSidebar === "attendance-reports" ? "active" : "", href=`/teachers/attendance-reports?teacher_id=${teacherId}`) Attendance Reports
 
     a.side-nav-logout(href="/logout") Logout

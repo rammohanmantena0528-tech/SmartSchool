@@ -79,6 +79,10 @@ const ANNOUNCEMENT_MESSAGES = {
     deleted: "Announcement deleted.",
     missing_fields: "Title, description, and category are required."
 };
+const ATTENDANCE_MESSAGES = {
+    created: "Attendance saved for the selected day.",
+    updated: "Attendance updated for the selected day."
+};
 let announcementTableReady = false;
 
 function getAuthNavLinks(mode) {
@@ -137,6 +141,17 @@ function getAnnouncementMessage(query) {
         return {
             type: "error",
             text: ANNOUNCEMENT_MESSAGES[query.error]
+        };
+    }
+
+    return null;
+}
+
+function getAttendanceMessage(query) {
+    if (query.saved && ATTENDANCE_MESSAGES[query.saved]) {
+        return {
+            type: "success",
+            text: ATTENDANCE_MESSAGES[query.saved]
         };
     }
 
@@ -849,6 +864,7 @@ app.get("/teachers/attendance", requireLogin, async (req, res) => {
              ORDER BY s.roll_number ASC`,
             [selectedDate, selectedSubject, teacherRows[0].class_name]
         );
+        const hasExistingAttendance = studentRows.some((student) => Boolean(student.attendance_id));
 
         res.render("teacher-attendance", {
             pageTitle: "Teacher Attendance | Smart School",
@@ -861,7 +877,8 @@ app.get("/teachers/attendance", requireLogin, async (req, res) => {
                 selectedSubject,
                 subjects: subjectRows.map((row) => row.subject),
                 students: studentRows,
-                message: req.query.saved === "1" ? "Attendance saved." : null
+                hasExistingAttendance,
+                message: getAttendanceMessage(req.query)
             }
         });
     } catch (error) {
@@ -891,6 +908,19 @@ app.post("/teachers/attendance", requireLogin, async (req, res) => {
             "SELECT id FROM students WHERE class_name = ? ORDER BY roll_number ASC",
             [teacherRows[0].class_name]
         );
+        const existingAttendance = await db.query(
+            `SELECT id
+             FROM student_attendance
+             WHERE attendance_date = ?
+               AND subject_name = ?
+               AND student_id IN (
+                   SELECT id
+                   FROM students
+                   WHERE class_name = ?
+               )`,
+            [selectedDate, selectedSubject, teacherRows[0].class_name]
+        );
+        const wasExistingAttendance = existingAttendance.length > 0;
 
         for (const student of students) {
             const status = req.body[`status_${student.id}`];
@@ -912,11 +942,137 @@ app.post("/teachers/attendance", requireLogin, async (req, res) => {
         }
 
         res.redirect(
-            `/teachers/attendance?teacher_id=${teacherId}&date=${selectedDate}&subject=${encodeURIComponent(selectedSubject)}&saved=1`
+            `/teachers/attendance?teacher_id=${teacherId}&date=${selectedDate}&subject=${encodeURIComponent(selectedSubject)}&saved=${wasExistingAttendance ? "updated" : "created"}`
         );
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not save teacher attendance.");
+    }
+});
+
+app.get("/teachers/attendance-reports", requireLogin, async (req, res) => {
+    const teacherId = Number(req.query.teacher_id) || 1;
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const defaultStartDate = `${todayIso.slice(0, 8)}01`;
+
+    try {
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const subjectRows = await db.query(
+            `SELECT DISTINCT subject_name AS subject
+             FROM teacher_schedule
+             WHERE teacher_id = ?
+             ORDER BY subject_name`,
+            [teacherId]
+        );
+
+        const selectedStartDate = getIsoDate(req.query.start_date || defaultStartDate);
+        const selectedEndDate = getIsoDate(req.query.end_date || todayIso);
+        const selectedSubject = typeof req.query.subject === "string" && req.query.subject.trim()
+            ? req.query.subject.trim()
+            : "All Subjects";
+
+        const reportParams = [
+            selectedStartDate,
+            selectedEndDate,
+            teacherRows[0].class_name
+        ];
+        let subjectFilter = "";
+
+        if (selectedSubject !== "All Subjects") {
+            subjectFilter = " AND sa.subject_name = ?";
+            reportParams.splice(2, 0, selectedSubject);
+        }
+
+        const reportRows = await db.query(
+            `SELECT
+                s.id AS student_id,
+                s.full_name AS student_name,
+                s.roll_number,
+                COUNT(sa.id) AS total_days,
+                SUM(CASE WHEN sa.status_label = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN sa.status_label = 'Late' THEN 1 ELSE 0 END) AS late_count,
+                SUM(CASE WHEN sa.status_label = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+             FROM students s
+             LEFT JOIN student_attendance sa
+               ON sa.student_id = s.id
+              AND sa.attendance_date BETWEEN ? AND ?
+              ${subjectFilter}
+             WHERE s.class_name = ?
+             GROUP BY s.id, s.full_name, s.roll_number
+             ORDER BY s.roll_number ASC`,
+            reportParams
+        );
+
+        const rows = reportRows.map((row) => {
+            const totalDays = Number(row.total_days) || 0;
+            const presentCount = Number(row.present_count) || 0;
+            const lateCount = Number(row.late_count) || 0;
+            const absentCount = Number(row.absent_count) || 0;
+            const participationRate = totalDays
+                ? `${Math.round(((presentCount + lateCount) / totalDays) * 100)}%`
+                : "0%";
+
+            return {
+                ...row,
+                totalDays,
+                presentCount,
+                lateCount,
+                absentCount,
+                participationRate
+            };
+        });
+
+        const summary = rows.reduce((totals, row) => {
+            totals.totalDays += row.totalDays;
+            totals.presentCount += row.presentCount;
+            totals.lateCount += row.lateCount;
+            totals.absentCount += row.absentCount;
+            return totals;
+        }, {
+            totalDays: 0,
+            presentCount: 0,
+            lateCount: 0,
+            absentCount: 0
+        });
+        const participationRate = summary.totalDays
+            ? `${Math.round(((summary.presentCount + summary.lateCount) / summary.totalDays) * 100)}%`
+            : "0%";
+
+        res.render("teacher-attendance-reports", {
+            pageTitle: "Teacher Attendance Reports | Smart School",
+            reportPage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                today,
+                selectedStartDate,
+                selectedEndDate,
+                selectedSubject,
+                subjects: ["All Subjects", ...subjectRows.map((row) => row.subject)],
+                rows,
+                summary: {
+                    ...summary,
+                    participationRate
+                }
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load attendance reports.");
     }
 });
 

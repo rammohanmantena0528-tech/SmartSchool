@@ -11,7 +11,10 @@ block content
         .dashboard-intro
           p.kicker Teacher Workspace
           h1 Teacher Attendance
-          p Mark attendance for #{attendancePage.className} on #{attendancePage.today}.
+          if attendancePage.hasExistingAttendance
+            p Review and update attendance for #{attendancePage.className} on #{attendancePage.today}.
+          else
+            p Mark daily attendance for #{attendancePage.className} on #{attendancePage.today}.
         .dashboard-class
           p.label Teacher
           p.value= attendancePage.teacherName
@@ -19,9 +22,12 @@ block content
           p.value= attendancePage.className
 
       article.dashboard-panel
-        h2 Attendance Marking
+        if attendancePage.hasExistingAttendance
+          h2 Update Attendance
+        else
+          h2 Attendance Marking
         if attendancePage.message
-          p.form-success= attendancePage.message
+          p.form-success= attendancePage.message.text
 
         form.filter-form(method="get", action="/teachers/attendance")
           input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
@@ -41,6 +47,10 @@ block content
           input(type="hidden", name="teacher_id", value=attendancePage.teacherId)
           input(type="hidden", name="date", value=attendancePage.selectedDate)
           input(type="hidden", name="subject", value=attendancePage.selectedSubject)
+          if attendancePage.hasExistingAttendance
+            p.form-helper Existing attendance is loaded below. Change any row and submit to correct mistakes.
+          else
+            p.form-helper Select a status for each student to save today's attendance record.
           table.schedule-table.attendance-table
             thead
               tr
@@ -70,7 +80,10 @@ block content
                     )
 
           .dashboard-actions
-            button.btn-primary(type="submit") Save Attendance
+            if attendancePage.hasExistingAttendance
+              button.btn-primary(type="submit") Update Attendance
+            else
+              button.btn-primary(type="submit") Save Attendance
 
       .dashboard-actions
         a.btn-secondary(href=`/teachers/dashboard?teacher_id=${attendancePage.teacherId}`) Back to Dashboard

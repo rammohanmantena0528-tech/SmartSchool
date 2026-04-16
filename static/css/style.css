@@ -496,6 +496,20 @@ a {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.portal-content .btn-secondary,
+.dashboard-actions .btn-secondary,
+.filter-actions .btn-secondary {
+  background: #e4f6eb;
+  color: #1d764c;
+  border-color: #9bcdb0;
+}
+
+.portal-content .btn-secondary:hover,
+.dashboard-actions .btn-secondary:hover,
+.filter-actions .btn-secondary:hover {
+  background: #d4ecdf;
+}
+
 .hero-panel {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1087,7 +1101,15 @@ a {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 12px;
-  align-items: end;
+  align-items: stretch;
+}
+
+.report-filter-grid {
+  grid-template-columns: 1fr 1fr 1fr auto;
+}
+
+.report-filter-grid .filter-actions {
+  align-self: stretch;
 }
 
 .form-field {
@@ -1120,11 +1142,34 @@ a {
 
 .filter-actions {
   display: flex;
+  align-items: stretch;
+}
+
+.filter-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  height: 100%;
+  min-height: 46px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
 .form-success {
   margin-bottom: 12px;
   color: #1d764c;
+  font-weight: 700;
+}
+
+.form-helper {
+  margin-bottom: 14px;
+  color: var(--muted);
+}
+
+.report-table td:last-child {
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -1147,6 +1192,15 @@ a {
 
   .filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .report-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filter-grid .filter-actions {
+    width: 100%;
+    align-self: auto;
   }
 
   .profile-grid {

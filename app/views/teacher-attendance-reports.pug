@@ -1,0 +1,82 @@
+extends layout
+
+block content
+  .portal-shell
+    - const teacherId = reportPage.teacherId
+    - const activeSidebar = "attendance-reports"
+    include teachersidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Workspace
+          h1 Attendance Reports
+          p Track class participation for #{reportPage.className} and review attendance trends by date range.
+        .dashboard-class
+          p.label Teacher
+          p.value= reportPage.teacherName
+          p.label Current Class
+          p.value= reportPage.className
+
+      .dashboard-stats
+        article.dashboard-card
+          p.card-label Attendance Records
+          p.card-value= reportPage.summary.totalDays
+        article.dashboard-card
+          p.card-label Present
+          p.card-value= reportPage.summary.presentCount
+        article.dashboard-card
+          p.card-label Late
+          p.card-value= reportPage.summary.lateCount
+        article.dashboard-card
+          p.card-label Participation Rate
+          p.card-value= reportPage.summary.participationRate
+
+      article.dashboard-panel
+        h2 Generate Report
+        form.filter-form(method="get", action="/teachers/attendance-reports")
+          input(type="hidden", name="teacher_id", value=reportPage.teacherId)
+          .filter-grid.report-filter-grid
+            label.form-field
+              span Start Date
+              input(type="date", name="start_date", value=reportPage.selectedStartDate)
+            label.form-field
+              span End Date
+              input(type="date", name="end_date", value=reportPage.selectedEndDate)
+            label.form-field
+              span Subject
+              select(name="subject")
+                each subject in reportPage.subjects
+                  option(value=subject, selected=subject === reportPage.selectedSubject)= subject
+            .filter-actions
+              button.btn-secondary(type="submit") View Report
+        p.form-helper Participation rate counts both Present and Late entries, so teachers can quickly spot engaged students.
+
+      article.dashboard-panel
+        h2 Student Participation Summary
+        if reportPage.rows.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Student
+                th Roll Number
+                th Records
+                th Present
+                th Late
+                th Absent
+                th Participation
+            tbody
+              each row in reportPage.rows
+                tr
+                  td= row.student_name
+                  td= row.roll_number
+                  td= row.totalDays
+                  td= row.presentCount
+                  td= row.lateCount
+                  td= row.absentCount
+                  td= row.participationRate
+        else
+          p.form-helper No attendance records were found for the selected filters.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/teachers/dashboard?teacher_id=${reportPage.teacherId}`) Back to Dashboard
