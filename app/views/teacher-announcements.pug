@@ -47,10 +47,28 @@ block content
             ul.announcement-list
               each announcement in announcementPage.announcements
                 li.announcement-item
-                  .announcement-head
-                    h3= announcement.title
-                    span.announcement-category= announcement.category
-                  p.assignment-meta Posted #{announcement.postedOn}
-                  p.announcement-description= announcement.description
+                  form.announcement-edit-form(action=`/teachers/announcements/${announcement.id}/update`, method="post")
+                    input(type="hidden", name="teacher_id", value=announcementPage.teacherId)
+                    .form-grid
+                      .form-field
+                        label(for=`title_${announcement.id}`) Title
+                        input(id=`title_${announcement.id}`, type="text", name="title", value=announcement.title)
+                      .form-field
+                        label(for=`category_${announcement.id}`) Category
+                        select(id=`category_${announcement.id}`, name="category")
+                          option(value="Academic", selected=announcement.category === "Academic") Academic
+                          option(value="Exam", selected=announcement.category === "Exam") Exam
+                          option(value="Event", selected=announcement.category === "Event") Event
+                          option(value="Attendance", selected=announcement.category === "Attendance") Attendance
+                          option(value="General", selected=announcement.category === "General") General
+                    .form-field
+                      label(for=`description_${announcement.id}`) Description
+                      textarea(id=`description_${announcement.id}`, name="description", rows="4")= announcement.description
+                    p.assignment-meta Posted #{announcement.postedOn}
+                    .announcement-actions
+                      button.btn-primary(type="submit") Save Changes
+                  form(action=`/teachers/announcements/${announcement.id}/delete`, method="post")
+                    input(type="hidden", name="teacher_id", value=announcementPage.teacherId)
+                    button.btn-danger(type="submit") Delete
           else
             p.profile-notes No announcements published yet.

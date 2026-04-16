@@ -810,7 +810,8 @@ a {
   gap: 12px;
 }
 
-.student-dashboard-grid {
+.student-dashboard-grid,
+.teacher-dashboard-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1028,6 +1029,35 @@ a {
 .announcement-description {
   color: var(--ink);
   margin-top: 8px;
+}
+
+.announcement-edit-form {
+  display: grid;
+  gap: 4px;
+}
+
+.announcement-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-danger {
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 10px 16px;
+  border: 2px solid #b73a32;
+  background: #fff1f0;
+  color: #9a2f23;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.btn-danger:hover {
+  background: #f8d6d2;
 }
 
 .attendance-link {

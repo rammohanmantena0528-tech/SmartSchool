@@ -22,7 +22,7 @@ block content
             p.card-label= stat.label
             p.card-value= stat.value
 
-      .dashboard-grid
+      .dashboard-grid.teacher-dashboard-grid
         article.dashboard-panel
           h2 Today's Schedule
           table.schedule-table
@@ -52,11 +52,8 @@ block content
                   span.status-pill.next Pending
                 |  #{todo}
 
-          h2.notice-title Attendance
-          p.assignment-meta Open the class attendance records in a separate page.
-          a.btn-primary.attendance-link(href=`/teachers/attendance?teacher_id=${dashboard.teacherId}`) View Attendance
-
-          h2.notice-title School Notices
+        article.dashboard-panel
+          h2 School Notices
           ul.dashboard-list.notice-list
             each notice in dashboard.notices
               li= notice

@@ -75,6 +75,8 @@ const PROFILE_MESSAGES = {
 };
 const ANNOUNCEMENT_MESSAGES = {
     created: "Announcement created.",
+    updated: "Announcement updated.",
+    deleted: "Announcement deleted.",
     missing_fields: "Title, description, and category are required."
 };
 let announcementTableReady = false;
@@ -598,6 +600,72 @@ app.post("/teachers/announcements", requireTeacher, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not create announcement.");
+    }
+});
+
+app.post("/teachers/announcements/:id/update", requireTeacher, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const announcementId = Number(req.params.id);
+    const title = normalizeText(req.body.title);
+    const description = normalizeText(req.body.description);
+    const category = normalizeText(req.body.category);
+    const announcementsUrl = `/teachers/announcements?teacher_id=${teacherId}`;
+
+    try {
+        await ensureAnnouncementTable();
+
+        if (!announcementId) {
+            return res.status(404).send("Announcement not found");
+        }
+
+        if (!title || !description || !category) {
+            return res.redirect(`${announcementsUrl}&error=missing_fields`);
+        }
+
+        const result = await db.query(
+            `UPDATE announcements
+             SET title = ?, description = ?, category = ?
+             WHERE id = ?
+               AND teacher_id = ?`,
+            [title, description, category, announcementId, teacherId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).send("Announcement not found");
+        }
+
+        res.redirect(`${announcementsUrl}&saved=updated`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not update announcement.");
+    }
+});
+
+app.post("/teachers/announcements/:id/delete", requireTeacher, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const announcementId = Number(req.params.id);
+    const announcementsUrl = `/teachers/announcements?teacher_id=${teacherId}`;
+
+    try {
+        await ensureAnnouncementTable();
+
+        if (!announcementId) {
+            return res.status(404).send("Announcement not found");
+        }
+
+        const result = await db.query(
+            "DELETE FROM announcements WHERE id = ? AND teacher_id = ?",
+            [announcementId, teacherId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).send("Announcement not found");
+        }
+
+        res.redirect(`${announcementsUrl}&saved=deleted`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not delete announcement.");
     }
 });
 
