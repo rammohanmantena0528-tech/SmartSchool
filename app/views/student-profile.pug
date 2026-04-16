@@ -1,0 +1,67 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = profile.studentId
+    - const activeSidebar = "profile"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Profile
+          h1= profile.studentName
+          p Review your school account details and change your password.
+        .dashboard-class
+          p.label Role
+          p.value Student
+
+      if profileMessage
+        p.auth-feedback(class=profileMessage.type === "error" ? "auth-feedback-error" : "auth-feedback-success")= profileMessage.text
+
+      .profile-grid
+        article.dashboard-panel.profile-card
+          h2 Personal Details
+          dl.profile-list
+            .profile-row
+              dt Full Name
+              dd= profile.studentName
+            .profile-row
+              dt Email
+              dd= profile.email
+            .profile-row
+              dt Phone
+              dd= profile.phone || "Not added"
+
+        article.dashboard-panel.profile-card
+          h2 Class Details
+          dl.profile-list
+            .profile-row
+              dt Class
+              dd= profile.className
+            .profile-row
+              dt Roll Number
+              dd= profile.rollNumber
+            .profile-row
+              dt Student ID
+              dd= profile.studentId
+
+        article.dashboard-panel.profile-card.profile-card-wide
+          h2 Notes
+          p.profile-notes= profile.about || "No profile notes added."
+
+        article.dashboard-panel.profile-card.profile-card-wide
+          h2 Change Password
+          form.profile-form(action="/students/password", method="post")
+            input(type="hidden", name="student_id", value=profile.studentId)
+            .form-grid
+              .form-field
+                label(for="current_password") Current Password
+                input#current_password(type="password", name="current_password")
+              .form-field
+                label(for="new_password") New Password
+                input#new_password(type="password", name="new_password")
+              .form-field
+                label(for="confirm_password") Confirm Password
+                input#confirm_password(type="password", name="confirm_password")
+            button.btn-primary(type="submit") Change Password

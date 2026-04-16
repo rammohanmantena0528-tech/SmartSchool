@@ -98,6 +98,19 @@ class User {
         return User.buildFromRow(rows[0]);
     }
 
+    static async findStudentAccount(studentId) {
+        const rows = await db.query(
+            `SELECT id, full_name, email, password, role, class_name, roll_number, phone, about, related_id
+             FROM Users
+             WHERE role = 'student'
+               AND related_id = ?
+             LIMIT 1`,
+            [studentId]
+        );
+
+        return User.buildFromRow(rows[0]);
+    }
+
     static async updatePassword(id, password) {
         const passwordHash = await bcrypt.hash(password, 10);
 

@@ -155,6 +155,28 @@ async function getTeacherProfile(teacherId) {
     return teacherRows[0] || null;
 }
 
+async function getStudentProfile(studentId) {
+    const studentRows = await db.query(
+        `SELECT
+            s.id,
+            s.full_name,
+            s.email,
+            s.class_name,
+            s.roll_number,
+            u.phone,
+            u.about
+         FROM students s
+         LEFT JOIN Users u
+           ON u.related_id = s.id
+          AND u.role = 'student'
+         WHERE s.id = ?
+         LIMIT 1`,
+        [studentId]
+    );
+
+    return studentRows[0] || null;
+}
+
 function renderAuthPage(res, authMode, options = {}) {
     const authValues = options.authValues || {};
 
@@ -760,6 +782,73 @@ app.get("/students/dashboard", requireLogin, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load student dashboard.");
+    }
+});
+
+app.get("/students/profile", requireLogin, async (req, res) => {
+    const studentId = Number(req.query.student_id) || 1;
+
+    try {
+        const student = await getStudentProfile(studentId);
+
+        if (!student) {
+            return res.status(404).send("Student not found");
+        }
+
+        res.render("student-profile", {
+            pageTitle: "Student Profile | Smart School",
+            profileMessage: getProfileMessage(req.query),
+            profile: {
+                studentId,
+                studentName: student.full_name,
+                email: student.email,
+                className: student.class_name,
+                rollNumber: student.roll_number,
+                phone: student.phone,
+                about: student.about
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load student profile.");
+    }
+});
+
+app.post("/students/password", requireLogin, async (req, res) => {
+    const studentId = Number(req.body.student_id) || 1;
+    const currentPassword = req.body.current_password;
+    const newPassword = req.body.new_password;
+    const confirmPassword = req.body.confirm_password;
+    const profileUrl = `/students/profile?student_id=${studentId}`;
+
+    try {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return res.redirect(`${profileUrl}&error=missing_password_fields`);
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.redirect(`${profileUrl}&error=password_mismatch`);
+        }
+
+        if (newPassword.length < 6) {
+            return res.redirect(`${profileUrl}&error=password_short`);
+        }
+
+        const user = await User.findStudentAccount(studentId);
+        if (!user) {
+            return res.redirect(`${profileUrl}&error=password_account_missing`);
+        }
+
+        const currentPasswordMatches = await user.authenticate(currentPassword);
+        if (!currentPasswordMatches) {
+            return res.redirect(`${profileUrl}&error=current_password_invalid`);
+        }
+
+        await User.updatePassword(user.id, newPassword);
+        res.redirect(`${profileUrl}&saved=password_changed`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not change student password.");
     }
 });
 

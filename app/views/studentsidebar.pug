@@ -7,6 +7,8 @@ aside.side-nav
       li
         a.side-nav-link(class=activeSidebar === "dashboard" ? "active" : "", href=`/students/dashboard?student_id=${studentId}`) Dashboard
       li
+        a.side-nav-link(class=activeSidebar === "profile" ? "active" : "", href=`/students/profile?student_id=${studentId}`) Profile
+      li
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/students/attendance?student_id=${studentId}`) Attendance
 
     a.side-nav-logout(href="/logout") Logout
