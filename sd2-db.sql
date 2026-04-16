@@ -23,6 +23,7 @@ INSERT INTO `test_table` (`id`, `name`) VALUES
 
 -- Teacher dashboard base tables
 DROP TABLE IF EXISTS `teacher_notices`;
+DROP TABLE IF EXISTS `announcements`;
 DROP TABLE IF EXISTS `teacher_tasks`;
 DROP TABLE IF EXISTS `teacher_schedule`;
 DROP TABLE IF EXISTS `teacher_stats`;
@@ -113,6 +114,20 @@ CREATE TABLE `teacher_notices` (
   PRIMARY KEY (`id`),
   KEY `idx_teacher_notices_teacher_id` (`teacher_id`),
   CONSTRAINT `fk_teacher_notices_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `announcements` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `teacher_id` int NOT NULL,
+  `class_name` varchar(60) NOT NULL,
+  `title` varchar(160) NOT NULL,
+  `description` text NOT NULL,
+  `category` varchar(60) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_announcements_teacher_id` (`teacher_id`),
+  KEY `idx_announcements_class_name` (`class_name`),
+  CONSTRAINT `fk_announcements_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `student_stats` (
@@ -207,6 +222,10 @@ INSERT INTO `teacher_notices` (`teacher_id`, `notice_text`, `notice_date`) VALUE
 (1, 'PTA meeting scheduled for Friday at 10:00 AM.', '2026-03-12'),
 (1, 'Science lab maintenance from 1:00 PM to 2:00 PM.', '2026-03-12'),
 (1, 'Submit activity photos before end of day.', '2026-03-11');
+
+INSERT INTO `announcements` (`teacher_id`, `class_name`, `title`, `description`, `category`, `created_at`) VALUES
+(1, 'Class 8 - A', 'Math assignment update', 'Complete worksheet 6B and submit it before the first period tomorrow.', 'Academic', '2026-03-12 08:30:00'),
+(1, 'Class 8 - A', 'Science lab reminder', 'Bring your lab coat and record notebook for the acids and bases practical.', 'General', '2026-03-12 10:00:00');
 
 INSERT INTO `student_stats` (`student_id`, `stat_label`, `stat_value`, `sort_order`) VALUES
 (1, 'Attendance', '94%', 1),

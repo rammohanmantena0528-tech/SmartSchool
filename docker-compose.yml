@@ -5,7 +5,7 @@ services:
       context: ./
     volumes:
       - .:/src
-    command: supervisor -e '.' index.js
+    command: supervisor -w index.js,app -i db,node_modules -e js index.js
     ports:
       - "3000:3000"
     depends_on:

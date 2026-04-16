@@ -73,6 +73,11 @@ const PROFILE_MESSAGES = {
     password_account_missing: "Password cannot be changed because no user account is linked to this teacher.",
     current_password_invalid: "Current password is incorrect."
 };
+const ANNOUNCEMENT_MESSAGES = {
+    created: "Announcement created.",
+    missing_fields: "Title, description, and category are required."
+};
+let announcementTableReady = false;
 
 function getAuthNavLinks(mode) {
     return [
@@ -118,6 +123,24 @@ function getProfileMessage(query) {
     return null;
 }
 
+function getAnnouncementMessage(query) {
+    if (query.saved && ANNOUNCEMENT_MESSAGES[query.saved]) {
+        return {
+            type: "success",
+            text: ANNOUNCEMENT_MESSAGES[query.saved]
+        };
+    }
+
+    if (query.error && ANNOUNCEMENT_MESSAGES[query.error]) {
+        return {
+            type: "error",
+            text: ANNOUNCEMENT_MESSAGES[query.error]
+        };
+    }
+
+    return null;
+}
+
 function getNavLinksForRequest(req) {
     if (!req.session.uid) {
         return getDefaultNavLinks();
@@ -132,6 +155,43 @@ function requireLogin(req, res, next) {
     }
 
     next();
+}
+
+function requireTeacher(req, res, next) {
+    if (!req.session.uid) {
+        return res.redirect("/login");
+    }
+
+    if (req.session.role !== "teacher") {
+        return res.redirect(req.session.redirectTo || "/");
+    }
+
+    next();
+}
+
+async function ensureAnnouncementTable() {
+    if (announcementTableReady) {
+        return;
+    }
+
+    await db.query(
+        `CREATE TABLE IF NOT EXISTS announcements (
+            id int NOT NULL AUTO_INCREMENT,
+            teacher_id int NOT NULL,
+            class_name varchar(60) NOT NULL,
+            title varchar(160) NOT NULL,
+            description text NOT NULL,
+            category varchar(60) NOT NULL,
+            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_announcements_teacher_id (teacher_id),
+            KEY idx_announcements_class_name (class_name),
+            CONSTRAINT fk_announcements_teacher
+                FOREIGN KEY (teacher_id) REFERENCES teachers (id)
+                ON DELETE CASCADE
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
+    );
+    announcementTableReady = true;
 }
 
 async function getTeacherProfile(teacherId) {
@@ -461,6 +521,86 @@ app.post("/teachers/password", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/teachers/announcements", requireTeacher, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.query.teacher_id) || 1;
+
+    try {
+        await ensureAnnouncementTable();
+
+        const teacherRows = await db.query(
+            "SELECT id, full_name, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        const announcements = await db.query(
+            `SELECT
+                id,
+                title,
+                description,
+                category,
+                DATE_FORMAT(created_at, '%b %e, %Y') AS postedOn
+             FROM announcements
+             WHERE teacher_id = ?
+             ORDER BY created_at DESC, id DESC`,
+            [teacherId]
+        );
+
+        res.render("teacher-announcements", {
+            pageTitle: "Teacher Announcements | Smart School",
+            announcementMessage: getAnnouncementMessage(req.query),
+            announcementPage: {
+                teacherId,
+                teacherName: teacherRows[0].full_name,
+                className: teacherRows[0].class_name,
+                announcements
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load teacher announcements.");
+    }
+});
+
+app.post("/teachers/announcements", requireTeacher, async (req, res) => {
+    const teacherId = req.session.relatedId || Number(req.body.teacher_id) || 1;
+    const title = normalizeText(req.body.title);
+    const description = normalizeText(req.body.description);
+    const category = normalizeText(req.body.category);
+    const announcementsUrl = `/teachers/announcements?teacher_id=${teacherId}`;
+
+    try {
+        await ensureAnnouncementTable();
+
+        if (!title || !description || !category) {
+            return res.redirect(`${announcementsUrl}&error=missing_fields`);
+        }
+
+        const teacherRows = await db.query(
+            "SELECT id, class_name FROM teachers WHERE id = ? LIMIT 1",
+            [teacherId]
+        );
+
+        if (!teacherRows[0]) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        await db.query(
+            `INSERT INTO announcements (teacher_id, class_name, title, description, category)
+             VALUES (?, ?, ?, ?, ?)`,
+            [teacherId, teacherRows[0].class_name, title, description, category]
+        );
+
+        res.redirect(`${announcementsUrl}&saved=created`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not create announcement.");
+    }
+});
+
 app.post('/authenticate', async (req, res) => {
     try {
         const email = normalizeText(req.body.email).toLowerCase();
@@ -764,6 +904,19 @@ app.get("/students/dashboard", requireLogin, async (req, res) => {
             "SELECT notice_text FROM student_notices WHERE student_id = ? ORDER BY notice_date DESC, id DESC",
             [studentId]
         );
+        await ensureAnnouncementTable();
+        const announcements = await db.query(
+            `SELECT
+                title,
+                description,
+                category,
+                DATE_FORMAT(created_at, '%b %e, %Y') AS postedOn
+             FROM announcements
+             WHERE class_name = ?
+             ORDER BY created_at DESC, id DESC
+             LIMIT 6`,
+            [studentRows[0].class_name]
+        );
 
         res.render("student-dashboard", {
             pageTitle: "Student Dashboard | Smart School",
@@ -776,6 +929,7 @@ app.get("/students/dashboard", requireLogin, async (req, res) => {
                 periods,
                 studentId,
                 assignments,
+                announcements,
                 notices: notices.map((row) => row.notice_text)
             }
         });

@@ -990,6 +990,46 @@ a {
   margin-top: 4px;
 }
 
+.announcement-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
+.announcement-item {
+  border: 1px solid #d8e6de;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdfb;
+}
+
+.announcement-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.announcement-head h3 {
+  color: var(--brand-dark);
+  font-size: 1rem;
+}
+
+.announcement-category {
+  border-radius: 8px;
+  background: #e4f6eb;
+  color: #1d764c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.announcement-description {
+  color: var(--ink);
+  margin-top: 8px;
+}
+
 .attendance-link {
   margin-top: 12px;
 }

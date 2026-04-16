@@ -1,0 +1,56 @@
+extends layout
+
+block content
+  .portal-shell
+    - const teacherId = announcementPage.teacherId
+    - const activeSidebar = "announcements"
+    include teachersidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Teacher Announcements
+          h1 Create Announcement
+          p Share clear updates with #{announcementPage.className}.
+        .dashboard-class
+          p.label Class
+          p.value= announcementPage.className
+
+      if announcementMessage
+        p.auth-feedback(class=announcementMessage.type === "error" ? "auth-feedback-error" : "auth-feedback-success")= announcementMessage.text
+
+      .profile-grid
+        article.dashboard-panel.profile-card.profile-card-wide
+          h2 New Announcement
+          form.profile-form(action="/teachers/announcements", method="post")
+            input(type="hidden", name="teacher_id", value=announcementPage.teacherId)
+            .form-grid
+              .form-field
+                label(for="title") Title
+                input#title(type="text", name="title", placeholder="Enter announcement title")
+              .form-field
+                label(for="category") Category
+                select#category(name="category")
+                  option(value="Academic") Academic
+                  option(value="Exam") Exam
+                  option(value="Event") Event
+                  option(value="Attendance") Attendance
+                  option(value="General") General
+            .form-field
+              label(for="description") Description
+              textarea#description(name="description", rows="5", placeholder="Write the update students should receive")
+            button.btn-primary(type="submit") Publish Announcement
+
+        article.dashboard-panel.profile-card.profile-card-wide
+          h2 Published Announcements
+          if announcementPage.announcements.length
+            ul.announcement-list
+              each announcement in announcementPage.announcements
+                li.announcement-item
+                  .announcement-head
+                    h3= announcement.title
+                    span.announcement-category= announcement.category
+                  p.assignment-meta Posted #{announcement.postedOn}
+                  p.announcement-description= announcement.description
+          else
+            p.profile-notes No announcements published yet.
