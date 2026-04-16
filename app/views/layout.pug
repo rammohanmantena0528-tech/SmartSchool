@@ -26,8 +26,13 @@ html(lang="en")
                 a(href=navItem.href)= navItem.label
 
           .nav-auth
-            a.btn-secondary.nav-auth-link(href="/login") Login
-            a.btn-primary.nav-auth-link(href="/register") Register
+            if loggedIn
+              .nav-user
+                span.nav-user-name= currentUserName || "User"
+                span.nav-user-role= currentRole || "Account"
+            else
+              a.btn-secondary.nav-auth-link(href="/login") Login
+              a.btn-primary.nav-auth-link(href="/register") Register
 
     // ===== Page Content =====
     main.main-shell

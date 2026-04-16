@@ -96,6 +96,44 @@ a {
   padding: 9px 14px;
 }
 
+.navbar .btn-secondary {
+  color: var(--brand-dark);
+  border-color: var(--brand);
+  background: #ffffff;
+}
+
+.navbar .btn-secondary:hover {
+  background: #deebe3;
+}
+
+.navbar .btn-primary {
+  color: #2f2200;
+}
+
+.nav-user {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.nav-user-name {
+  color: var(--brand-dark);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.nav-user-role {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: capitalize;
+}
+
 .main-shell {
   overflow: hidden;
 }
@@ -772,6 +810,10 @@ a {
   gap: 12px;
 }
 
+.student-dashboard-grid {
+  grid-template-columns: 1fr;
+}
+
 .dashboard-panel {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -900,6 +942,54 @@ a {
   color: var(--muted);
 }
 
+.profile-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.profile-card-wide {
+  grid-column: 1 / -1;
+}
+
+.profile-list {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-row {
+  border-top: 1px dashed #d8e6de;
+  padding-top: 12px;
+}
+
+.profile-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.profile-row dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.profile-row dd {
+  color: var(--brand-dark);
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.profile-notes {
+  color: var(--muted);
+}
+
+.profile-form {
+  margin-top: 4px;
+}
+
 .attendance-link {
   margin-top: 12px;
 }
@@ -986,6 +1076,10 @@ a {
   }
 
   .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-grid {
     grid-template-columns: 1fr;
   }
 }

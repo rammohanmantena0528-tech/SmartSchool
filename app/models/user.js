@@ -73,6 +73,40 @@ class User {
         return User.buildFromRow(rows[0]);
     }
 
+    static async findById(id) {
+        const rows = await db.query(
+            `SELECT id, full_name, email, password, role, class_name, roll_number, phone, about, related_id
+             FROM Users
+             WHERE id = ?
+             LIMIT 1`,
+            [id]
+        );
+
+        return User.buildFromRow(rows[0]);
+    }
+
+    static async findTeacherAccount(teacherId) {
+        const rows = await db.query(
+            `SELECT id, full_name, email, password, role, class_name, roll_number, phone, about, related_id
+             FROM Users
+             WHERE role = 'teacher'
+               AND related_id = ?
+             LIMIT 1`,
+            [teacherId]
+        );
+
+        return User.buildFromRow(rows[0]);
+    }
+
+    static async updatePassword(id, password) {
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        await db.query(
+            "UPDATE Users SET password = ? WHERE id = ?",
+            [passwordHash, id]
+        );
+    }
+
     static async create(details) {
         const fullName = User.normalizeText(details.fullName);
         const email = User.normalizeText(details.email).toLowerCase();

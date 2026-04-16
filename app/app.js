@@ -31,6 +31,28 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(sessionMiddleware);
 
+app.use(async (req, res, next) => {
+    if (req.session.uid && !req.session.fullName) {
+        try {
+            const user = await User.findById(req.session.uid);
+
+            if (user) {
+                req.session.fullName = user.fullName;
+                req.session.role = req.session.role || user.role;
+                req.session.relatedId = req.session.relatedId || user.relatedId || null;
+            }
+        } catch (error) {
+            console.error("Could not refresh session user details:", error.message);
+        }
+    }
+
+    res.locals.loggedIn = Boolean(req.session.uid);
+    res.locals.currentUserName = req.session.fullName || "";
+    res.locals.currentRole = req.session.role || null;
+    res.locals.navLinks = getNavLinksForRequest(req);
+    next();
+});
+
 function getIsoDate(value) {
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return value;
@@ -40,6 +62,17 @@ function getIsoDate(value) {
 }
 
 const VALID_ROLES = new Set(["student", "teacher", "admin"]);
+const PROFILE_MESSAGES = {
+    updated: "Profile updated.",
+    password_changed: "Password changed.",
+    missing_profile_fields: "Full name, email, and assigned class are required.",
+    duplicate_email: "That email is already used by another account.",
+    missing_password_fields: "Current password, new password, and confirmation are required.",
+    password_mismatch: "New password and confirmation do not match.",
+    password_short: "New password must be at least 6 characters.",
+    password_account_missing: "Password cannot be changed because no user account is linked to this teacher.",
+    current_password_invalid: "Current password is incorrect."
+};
 
 function getAuthNavLinks(mode) {
     return [
@@ -48,6 +81,78 @@ function getAuthNavLinks(mode) {
         { href: mode === "register" ? "/login" : "/register", label: mode === "register" ? "Login" : "Register" },
         { href: "/#contact", label: "Contact" }
     ];
+}
+
+function getStudentDashboardHref(studentId) {
+    return `/students/dashboard${studentId ? `?student_id=${studentId}` : ""}`;
+}
+
+function getTeacherDashboardHref(teacherId) {
+    return `/teachers/dashboard${teacherId ? `?teacher_id=${teacherId}` : ""}`;
+}
+
+function getDefaultNavLinks() {
+    return [
+        { href: "/", label: "Overview" },
+        { href: "/#modules", label: "Modules" },
+        { href: "/#journey", label: "Journey" },
+        { href: "/#contact", label: "Contact" }
+    ];
+}
+
+function getProfileMessage(query) {
+    if (query.saved && PROFILE_MESSAGES[query.saved]) {
+        return {
+            type: "success",
+            text: PROFILE_MESSAGES[query.saved]
+        };
+    }
+
+    if (query.error && PROFILE_MESSAGES[query.error]) {
+        return {
+            type: "error",
+            text: PROFILE_MESSAGES[query.error]
+        };
+    }
+
+    return null;
+}
+
+function getNavLinksForRequest(req) {
+    if (!req.session.uid) {
+        return getDefaultNavLinks();
+    }
+
+    return [];
+}
+
+function requireLogin(req, res, next) {
+    if (!req.session.uid) {
+        return res.redirect("/login");
+    }
+
+    next();
+}
+
+async function getTeacherProfile(teacherId) {
+    const teacherRows = await db.query(
+        `SELECT
+            t.id,
+            t.full_name,
+            t.email,
+            t.class_name,
+            u.phone,
+            u.about
+         FROM teachers t
+         LEFT JOIN Users u
+           ON u.related_id = t.id
+          AND u.role = 'teacher'
+         WHERE t.id = ?
+         LIMIT 1`,
+        [teacherId]
+    );
+
+    return teacherRows[0] || null;
 }
 
 function renderAuthPage(res, authMode, options = {}) {
@@ -108,12 +213,12 @@ async function ensureRoleRecord(role, details) {
 }
 
 function getRedirectForUser(user) {
-    if (user.role === "teacher" && user.relatedId) {
-        return `/teachers/dashboard?teacher_id=${user.relatedId}`;
+    if (user.role === "teacher") {
+        return getTeacherDashboardHref(user.relatedId);
     }
 
-    if (user.role === "student" && user.relatedId) {
-        return `/students/dashboard?student_id=${user.relatedId}`;
+    if (user.role === "student") {
+        return getStudentDashboardHref(user.relatedId);
     }
 
     return "/";
@@ -126,15 +231,7 @@ function getRedirectForUser(user) {
 
 app.get("/", (req, res) => {
   res.render("home", {
-    pageTitle: "Smart School",
-    navLinks: [
-      { href: "/", label: "Overview" },
-      { href: "/#modules", label: "Modules" },
-      { href: "/#journey", label: "Journey" },
-      { href: "/students/dashboard", label: "Student Dashboard" },
-      { href: "/teachers/dashboard", label: "Teacher Dashboard" },
-      { href: "/#contact", label: "Contact" }
-    ]
+    pageTitle: "Smart School"
   });
 });
 
@@ -156,7 +253,7 @@ app.get("/register", (req, res) => {
     renderAuthPage(res, "register");
 });
 
-app.get("/teachers/dashboard", async (req, res) => {
+app.get("/teachers/dashboard", requireLogin, async (req, res) => {
     const teacherId = Number(req.query.teacher_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -204,12 +301,6 @@ app.get("/teachers/dashboard", async (req, res) => {
 
         res.render("teacher-dashboard", {
             pageTitle: "Teacher Dashboard | Smart School",
-            navLinks: [
-                { href: "/", label: "Overview" },
-                { href: "/students/dashboard", label: "Student Dashboard" },
-                { href: "/teachers/dashboard", label: "Teacher Dashboard" },
-                { href: "/#contact", label: "Contact" }
-            ],
             dashboard: {
                 teacherId,
                 teacherName: teacherRows[0].full_name,
@@ -225,6 +316,126 @@ app.get("/teachers/dashboard", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load teacher dashboard.");
+    }
+});
+
+app.get("/teachers/profile", requireLogin, async (req, res) => {
+    const teacherId = Number(req.query.teacher_id) || 1;
+
+    try {
+        const teacher = await getTeacherProfile(teacherId);
+
+        if (!teacher) {
+            return res.status(404).send("Teacher not found");
+        }
+
+        res.render("teacher-profile", {
+            pageTitle: "Teacher Profile | Smart School",
+            profileMessage: getProfileMessage(req.query),
+            profile: {
+                teacherId,
+                teacherName: teacher.full_name,
+                email: teacher.email,
+                className: teacher.class_name,
+                phone: teacher.phone,
+                about: teacher.about
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load teacher profile.");
+    }
+});
+
+app.post("/teachers/profile", requireLogin, async (req, res) => {
+    const teacherId = Number(req.body.teacher_id) || 1;
+    const fullName = normalizeText(req.body.full_name);
+    const email = normalizeText(req.body.email).toLowerCase();
+    const className = normalizeText(req.body.class_name);
+    const phone = normalizeText(req.body.phone);
+    const about = normalizeText(req.body.about);
+    const profileUrl = `/teachers/profile?teacher_id=${teacherId}`;
+
+    try {
+        if (!fullName || !email || !className) {
+            return res.redirect(`${profileUrl}&error=missing_profile_fields`);
+        }
+
+        const teacherEmailRows = await db.query(
+            "SELECT id FROM teachers WHERE email = ? AND id <> ? LIMIT 1",
+            [email, teacherId]
+        );
+        const userEmailRows = await db.query(
+            `SELECT id
+             FROM Users
+             WHERE email = ?
+               AND NOT (role = 'teacher' AND related_id = ?)
+             LIMIT 1`,
+            [email, teacherId]
+        );
+
+        if (teacherEmailRows[0] || userEmailRows[0]) {
+            return res.redirect(`${profileUrl}&error=duplicate_email`);
+        }
+
+        await db.query(
+            "UPDATE teachers SET full_name = ?, email = ?, class_name = ? WHERE id = ?",
+            [fullName, email, className, teacherId]
+        );
+        await db.query(
+            `UPDATE Users
+             SET full_name = ?, email = ?, class_name = ?, phone = ?, about = ?
+             WHERE role = 'teacher'
+               AND related_id = ?`,
+            [fullName, email, className, phone || null, about || null, teacherId]
+        );
+
+        if (req.session.relatedId === teacherId && req.session.role === "teacher") {
+            req.session.fullName = fullName;
+        }
+
+        res.redirect(`${profileUrl}&saved=updated`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not update teacher profile.");
+    }
+});
+
+app.post("/teachers/password", requireLogin, async (req, res) => {
+    const teacherId = Number(req.body.teacher_id) || 1;
+    const currentPassword = req.body.current_password;
+    const newPassword = req.body.new_password;
+    const confirmPassword = req.body.confirm_password;
+    const profileUrl = `/teachers/profile?teacher_id=${teacherId}`;
+
+    try {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return res.redirect(`${profileUrl}&error=missing_password_fields`);
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.redirect(`${profileUrl}&error=password_mismatch`);
+        }
+
+        if (newPassword.length < 6) {
+            return res.redirect(`${profileUrl}&error=password_short`);
+        }
+
+        const user = await User.findTeacherAccount(teacherId);
+        if (!user) {
+            return res.redirect(`${profileUrl}&error=password_account_missing`);
+        }
+
+        const currentPasswordMatches = await user.authenticate(currentPassword);
+        if (!currentPasswordMatches) {
+            return res.redirect(`${profileUrl}&error=current_password_invalid`);
+        }
+
+        await User.updatePassword(user.id, newPassword);
+        res.redirect(`${profileUrl}&saved=password_changed`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not change teacher password.");
     }
 });
 
@@ -272,6 +483,7 @@ app.post('/authenticate', async (req, res) => {
 
         req.session.uid = user.id;
         req.session.loggedIn = true;
+        req.session.fullName = user.fullName;
         req.session.role = user.role;
         req.session.redirectTo = redirectTo;
         req.session.relatedId = user.relatedId || null;
@@ -283,13 +495,15 @@ app.post('/authenticate', async (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-    try {
-        req.session.destroy();
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Error logging out:", err);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        res.clearCookie("connect.sid");
         res.redirect('/login');
-    } catch (err) {
-        console.error("Error logging out:", err);
-        res.status(500).send('Internal Server Error');
-    }
+    });
 });
 
 app.post('/register', async (req, res) => {
@@ -359,7 +573,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-app.get("/teachers/attendance", async (req, res) => {
+app.get("/teachers/attendance", requireLogin, async (req, res) => {
     const teacherId = Number(req.query.teacher_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -408,13 +622,6 @@ app.get("/teachers/attendance", async (req, res) => {
 
         res.render("teacher-attendance", {
             pageTitle: "Teacher Attendance | Smart School",
-            navLinks: [
-                { href: "/", label: "Overview" },
-                { href: `/teachers/dashboard?teacher_id=${teacherId}`, label: "Teacher Dashboard" },
-                { href: `/teachers/attendance?teacher_id=${teacherId}`, label: "Attendance" },
-                { href: "/students/dashboard", label: "Student Dashboard" },
-                { href: "/#contact", label: "Contact" }
-            ],
             attendancePage: {
                 teacherId,
                 teacherName: teacherRows[0].full_name,
@@ -433,7 +640,7 @@ app.get("/teachers/attendance", async (req, res) => {
     }
 });
 
-app.post("/teachers/attendance", async (req, res) => {
+app.post("/teachers/attendance", requireLogin, async (req, res) => {
     const teacherId = Number(req.body.teacher_id) || 1;
     const selectedDate = getIsoDate(req.body.date);
     const selectedSubject = typeof req.body.subject === "string" && req.body.subject.trim()
@@ -483,7 +690,7 @@ app.post("/teachers/attendance", async (req, res) => {
     }
 });
 
-app.get("/students/dashboard", async (req, res) => {
+app.get("/students/dashboard", requireLogin, async (req, res) => {
     const studentId = Number(req.query.student_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -538,12 +745,6 @@ app.get("/students/dashboard", async (req, res) => {
 
         res.render("student-dashboard", {
             pageTitle: "Student Dashboard | Smart School",
-            navLinks: [
-                { href: "/", label: "Overview" },
-                { href: "/students/dashboard", label: "Student Dashboard" },
-                { href: "/teachers/dashboard", label: "Teacher Dashboard" },
-                { href: "/#contact", label: "Contact" }
-            ],
             dashboard: {
                 studentName: studentRows[0].full_name,
                 className: studentRows[0].class_name,
@@ -562,7 +763,7 @@ app.get("/students/dashboard", async (req, res) => {
     }
 });
 
-app.get("/students/attendance", async (req, res) => {
+app.get("/students/attendance", requireLogin, async (req, res) => {
     const studentId = Number(req.query.student_id) || 1;
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -595,13 +796,6 @@ app.get("/students/attendance", async (req, res) => {
 
         res.render("student-attendance", {
             pageTitle: "Student Attendance | Smart School",
-            navLinks: [
-                { href: "/", label: "Overview" },
-                { href: `/students/dashboard?student_id=${studentId}`, label: "Student Dashboard" },
-                { href: `/students/attendance?student_id=${studentId}`, label: "Attendance" },
-                { href: "/teachers/dashboard", label: "Teacher Dashboard" },
-                { href: "/#contact", label: "Contact" }
-            ],
             attendancePage: {
                 studentId,
                 studentName: studentRows[0].full_name,

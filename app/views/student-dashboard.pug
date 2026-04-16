@@ -24,7 +24,7 @@ block content
             p.card-label= stat.label
             p.card-value= stat.value
 
-      .dashboard-grid
+      .dashboard-grid.student-dashboard-grid
         article.dashboard-panel
           h2 Today's Schedule
           table.schedule-table
@@ -44,11 +44,6 @@ block content
                     span.status-pill(class=period.status.toLowerCase())= period.status
 
         article.dashboard-panel
-          h2 Attendance Record
-          p.assignment-meta View the full attendance history in a separate page.
-          a.btn-primary.attendance-link(href=`/students/attendance?student_id=${dashboard.studentId}`) Open Attendance
-
-        article.dashboard-panel
           h2 Assignment Tracker
           ul.dashboard-list.assignment-list
             each assignment in dashboard.assignments
@@ -58,7 +53,8 @@ block content
                   p.assignment-meta #{assignment.subject} • #{assignment.due}
                 span.status-pill(class=assignment.progress.toLowerCase().replace(/[^a-z]/g, "-"))= assignment.progress
 
-          h2.notice-title School Notices
+        article.dashboard-panel
+          h2 School Notices
           ul.dashboard-list.notice-list
             each notice in dashboard.notices
               li= notice
