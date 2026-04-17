@@ -19,7 +19,7 @@ const sessionMiddleware = session({
     resave: false
 });
 
-const VALID_ROLES = new Set(["student", "teacher", "admin"]);
+const VALID_ROLES = new Set(["student", "teacher"]);
 const PROFILE_MESSAGES = {
     updated: "Profile updated.",
     password_changed: "Password changed.",
@@ -362,7 +362,7 @@ app.post("/register", async (req, res) => {
             });
         }
 
-        if (registrationData.role !== "admin" && !registrationData.className) {
+        if (!registrationData.className) {
             return renderAuthPage(res, "register", {
                 statusCode: 400,
                 authError: "Class or department is required for student and teacher accounts.",
@@ -1110,6 +1110,33 @@ app.get("/students/attendance", requireLogin, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Could not load student attendance.");
+    }
+});
+
+app.get("/students/announcements", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+
+    try {
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).send("Student not found");
+        }
+
+        const announcements = await Announcement.listForClass(student.className);
+        res.render("student-announcements", {
+            pageTitle: "Student Announcements | Smart School",
+            announcementPage: {
+                studentId,
+                studentName: student.fullName,
+                className: student.className,
+                rollNumber: student.rollNumber,
+                today: getTodayLabel(),
+                announcements
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load announcements.");
     }
 });
 

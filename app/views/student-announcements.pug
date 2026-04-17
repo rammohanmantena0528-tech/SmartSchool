@@ -1,0 +1,36 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = announcementPage.studentId
+    - const activeSidebar = "announcements"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 Class Announcements
+          p Stay updated with your teachers' latest notices as of #{announcementPage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= announcementPage.className
+          p.label Roll Number
+          p.value= announcementPage.rollNumber
+
+      article.dashboard-panel
+        h2 Latest Updates
+        if announcementPage.announcements.length
+          ul.announcement-list
+            each announcement in announcementPage.announcements
+              li.announcement-item
+                .announcement-head
+                  h3= announcement.title
+                  span.announcement-category= announcement.category
+                p.assignment-meta Posted #{announcement.postedOn}
+                p.announcement-description= announcement.description
+        else
+          p.profile-notes No announcements yet.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${announcementPage.studentId}`) Back to Dashboard

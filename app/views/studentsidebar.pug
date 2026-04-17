@@ -11,6 +11,8 @@ aside.side-nav
       li
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/students/attendance?student_id=${studentId}`) Attendance
       li
+        a.side-nav-link(class=activeSidebar === "announcements" ? "active" : "", href=`/students/announcements?student_id=${studentId}`) Announcements
+      li
         a.side-nav-link(class=activeSidebar === "marks" ? "active" : "", href=`/students/marks?student_id=${studentId}`) Marks
       li
         a.side-nav-link(class=activeSidebar === "performance" ? "active" : "", href=`/students/performance?student_id=${studentId}`) Performance

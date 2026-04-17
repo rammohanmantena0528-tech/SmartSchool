@@ -44,16 +44,6 @@ block content
                     span.status-pill(class=period.status.toLowerCase())= period.status
 
         article.dashboard-panel
-          h2 Assignment Tracker
-          ul.dashboard-list.assignment-list
-            each assignment in dashboard.assignments
-              li.assignment-item
-                .assignment-copy
-                  p.assignment-title= assignment.title
-                  p.assignment-meta #{assignment.subject} • #{assignment.due}
-                span.status-pill(class=assignment.progress.toLowerCase().replace(/[^a-z]/g, "-"))= assignment.progress
-
-        article.dashboard-panel
           h2 Recent Marks
           if dashboard.marksPreview.length
             ul.dashboard-list.assignment-list
@@ -78,9 +68,3 @@ block content
                   p.announcement-description= announcement.description
           else
             p.profile-notes No announcements yet.
-
-        article.dashboard-panel
-          h2 School Notices
-          ul.dashboard-list.notice-list
-            each notice in dashboard.notices
-              li= notice

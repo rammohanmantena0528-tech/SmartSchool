@@ -44,7 +44,6 @@ block content
                 select#role(name="role")
                   option(value="student", selected=((authValues && authValues.role) || "student") === "student") Student
                   option(value="teacher", selected=(authValues && authValues.role) === "teacher") Teacher
-                  option(value="admin", selected=(authValues && authValues.role) === "admin") Administrator
               .form-field
                 label(for="class_name") Class / Department
                 input#class_name(type="text", name="class_name", placeholder="Grade 10 - A", value=(authValues && authValues.className) || "")
@@ -74,7 +73,6 @@ block content
               select#login_role(name="role")
                 option(value="student", selected=((authValues && authValues.role) || "student") === "student") Student
                 option(value="teacher", selected=(authValues && authValues.role) === "teacher") Teacher
-                option(value="admin", selected=(authValues && authValues.role) === "admin") Administrator
             .form-field
               label(for="login_email") Email Address
               input#login_email(type="email", name="email", placeholder="name@school.edu", value=(authValues && authValues.email) || "")
