@@ -42,18 +42,15 @@ block content
                     span.status-pill(class=period.status.toLowerCase())= period.status
 
         article.dashboard-panel
-          h2 Task Checklist
-          ul.dashboard-list
-            each todo in dashboard.todos
-              li
-                if dashboard.doneTodos && dashboard.doneTodos.includes(todo)
-                  span.status-pill.completed Done
-                else
-                  span.status-pill.next Pending
-                |  #{todo}
-
-        article.dashboard-panel
-          h2 School Notices
-          ul.dashboard-list.notice-list
-            each notice in dashboard.notices
-              li= notice
+          h2 Announcements
+          if dashboard.announcements.length
+            ul.announcement-list
+              each announcement in dashboard.announcements
+                li.announcement-item
+                  .announcement-head
+                    h3= announcement.title
+                    span.announcement-category= announcement.category
+                  p.assignment-meta Posted #{announcement.postedOn}
+                  p.announcement-description= announcement.description
+          else
+            p.profile-notes No announcements yet.
