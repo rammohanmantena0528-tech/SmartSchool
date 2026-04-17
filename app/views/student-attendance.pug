@@ -35,6 +35,3 @@ block content
                 td
                   span.status-pill(class=entry.status.toLowerCase().replace(/[^a-z]/g, "-"))= entry.status
                 td= entry.remarks || "-"
-
-      .dashboard-actions
-        a.btn-secondary(href=`/students/dashboard?student_id=${attendancePage.studentId}`) Back to Dashboard

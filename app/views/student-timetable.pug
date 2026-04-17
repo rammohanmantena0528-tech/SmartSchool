@@ -38,6 +38,3 @@ block content
                     span.status-pill(class=period.status.toLowerCase().replace(/[^a-z]/g, "-"))= period.status
         else
           p.form-helper No timetable entries are available yet.
-
-      .dashboard-actions
-        a.btn-secondary(href=`/students/dashboard?student_id=${timetablePage.studentId}`) Back to Dashboard

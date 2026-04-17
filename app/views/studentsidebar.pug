@@ -7,8 +7,6 @@ aside.side-nav
       li
         a.side-nav-link(class=activeSidebar === "dashboard" ? "active" : "", href=`/students/dashboard?student_id=${studentId}`) Dashboard
       li
-        a.side-nav-link(class=activeSidebar === "profile" ? "active" : "", href=`/students/profile?student_id=${studentId}`) Profile
-      li
         a.side-nav-link(class=activeSidebar === "attendance" ? "active" : "", href=`/students/attendance?student_id=${studentId}`) Attendance
       li
         a.side-nav-link(class=activeSidebar === "attendance-reports" ? "active" : "", href=`/students/attendance-reports?student_id=${studentId}`) Attendance Reports
@@ -20,5 +18,7 @@ aside.side-nav
         a.side-nav-link(class=activeSidebar === "performance" ? "active" : "", href=`/students/performance?student_id=${studentId}`) Performance
       li
         a.side-nav-link(class=activeSidebar === "timetable" ? "active" : "", href=`/students/timetable?student_id=${studentId}`) Timetable
+      li
+        a.side-nav-link(class=activeSidebar === "profile" ? "active" : "", href=`/students/profile?student_id=${studentId}`) Profile
 
     a.side-nav-logout(href="/logout") Logout
