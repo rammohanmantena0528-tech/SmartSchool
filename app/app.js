@@ -1230,6 +1230,56 @@ app.get("/students/performance", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/students/performance/download", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+
+    try {
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).send("Student not found");
+        }
+
+        const performanceData = await Mark.getStudentPerformance(studentId);
+        const csvRows = [
+            ["Student Name", student.fullName],
+            ["Class", student.className],
+            ["Roll Number", student.rollNumber],
+            ["Generated On", getTodayLabel()],
+            [],
+            ["Total Assessments", performanceData.summary.totalAssessments],
+            ["Overall Average", performanceData.summary.overallAverage],
+            ["Strong Subjects", performanceData.summary.strongSubjects],
+            [],
+            ["Subject", "Assessments", "Average", "Best Score", "Progress"]
+        ];
+
+        for (const row of performanceData.rows) {
+            csvRows.push([
+                row.subject,
+                row.assessmentsCount,
+                row.averagePercent,
+                row.bestPercent,
+                row.progressBand
+            ]);
+        }
+
+        const csvContent = csvRows
+            .map((row) => row.map((value) => {
+                const normalizedValue = value === undefined || value === null ? "" : String(value);
+                const escapedValue = normalizedValue.replace(/"/g, "\"\"");
+                return `"${escapedValue}"`;
+            }).join(","))
+            .join("\n");
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="student-performance-report-${studentId}.csv"`);
+        res.send(csvContent);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not download performance report.");
+    }
+});
+
 app.get("/students/timetable", requireLogin, async (req, res) => {
     const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
 
