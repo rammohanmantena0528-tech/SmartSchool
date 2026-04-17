@@ -211,6 +211,78 @@ class Student {
         };
     }
 
+    static async getAttendanceReportData(studentId) {
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return null;
+        }
+
+        const summaryRows = await db.query(
+            `SELECT
+                COUNT(id) AS total_days,
+                SUM(CASE WHEN status_label = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN status_label = 'Late' THEN 1 ELSE 0 END) AS late_count,
+                SUM(CASE WHEN status_label = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+             FROM student_attendance
+             WHERE student_id = ?`,
+            [studentId]
+        );
+        const subjectRows = await db.query(
+            `SELECT
+                subject_name AS subject,
+                COUNT(id) AS total_days,
+                SUM(CASE WHEN status_label = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN status_label = 'Late' THEN 1 ELSE 0 END) AS late_count,
+                SUM(CASE WHEN status_label = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+             FROM student_attendance
+             WHERE student_id = ?
+             GROUP BY subject_name
+             ORDER BY subject_name ASC`,
+            [studentId]
+        );
+
+        const summary = summaryRows[0] || {
+            total_days: 0,
+            present_count: 0,
+            late_count: 0,
+            absent_count: 0
+        };
+        const totalDays = Number(summary.total_days) || 0;
+        const presentCount = Number(summary.present_count) || 0;
+        const lateCount = Number(summary.late_count) || 0;
+        const absentCount = Number(summary.absent_count) || 0;
+
+        return {
+            student,
+            summary: {
+                totalDays,
+                presentCount,
+                lateCount,
+                absentCount,
+                attendanceRate: totalDays
+                    ? `${Math.round(((presentCount + lateCount) / totalDays) * 100)}%`
+                    : "0%"
+            },
+            rows: subjectRows.map((row) => {
+                const subjectTotal = Number(row.total_days) || 0;
+                const subjectPresent = Number(row.present_count) || 0;
+                const subjectLate = Number(row.late_count) || 0;
+                const subjectAbsent = Number(row.absent_count) || 0;
+
+                return {
+                    subject: row.subject,
+                    totalDays: subjectTotal,
+                    presentCount: subjectPresent,
+                    lateCount: subjectLate,
+                    absentCount: subjectAbsent,
+                    attendanceRate: subjectTotal
+                        ? `${Math.round(((subjectPresent + subjectLate) / subjectTotal) * 100)}%`
+                        : "0%"
+                };
+            })
+        };
+    }
+
     static async getTimetablePageData(studentId) {
         const student = await Student.findById(studentId);
         if (!student) {

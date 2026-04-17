@@ -1,0 +1,60 @@
+extends layout
+
+block content
+  .portal-shell
+    - const studentId = reportPage.studentId
+    - const activeSidebar = "attendance-reports"
+    include studentsidebar
+
+    section.dashboard-wrap.portal-content
+      .dashboard-head
+        .dashboard-intro
+          p.kicker Student Workspace
+          h1 Attendance Reports
+          p Review your attendance trend and identify where you need improvement as of #{reportPage.today}.
+        .dashboard-class
+          p.label Class
+          p.value= reportPage.className
+          p.label Roll Number
+          p.value= reportPage.rollNumber
+
+      .dashboard-stats
+        article.dashboard-card
+          p.card-label Total Days
+          p.card-value= reportPage.summary.totalDays
+        article.dashboard-card
+          p.card-label Present
+          p.card-value= reportPage.summary.presentCount
+        article.dashboard-card
+          p.card-label Absent
+          p.card-value= reportPage.summary.absentCount
+        article.dashboard-card
+          p.card-label Attendance Rate
+          p.card-value= reportPage.summary.attendanceRate
+
+      article.dashboard-panel
+        h2 Subject-wise Report
+        if reportPage.rows.length
+          table.schedule-table.attendance-table.report-table
+            thead
+              tr
+                th Subject
+                th Total Days
+                th Present
+                th Late
+                th Absent
+                th Attendance Rate
+            tbody
+              each row in reportPage.rows
+                tr
+                  td= row.subject
+                  td= row.totalDays
+                  td= row.presentCount
+                  td= row.lateCount
+                  td= row.absentCount
+                  td= row.attendanceRate
+        else
+          p.form-helper No attendance data is available yet.
+
+      .dashboard-actions
+        a.btn-secondary(href=`/students/dashboard?student_id=${reportPage.studentId}`) Back to Dashboard

@@ -1113,6 +1113,33 @@ app.get("/students/attendance", requireLogin, async (req, res) => {
     }
 });
 
+app.get("/students/attendance-reports", requireLogin, async (req, res) => {
+    const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
+
+    try {
+        const reportData = await Student.getAttendanceReportData(studentId);
+        if (!reportData) {
+            return res.status(404).send("Student not found");
+        }
+
+        res.render("student-attendance-reports", {
+            pageTitle: "Student Attendance Reports | Smart School",
+            reportPage: {
+                studentId,
+                studentName: reportData.student.fullName,
+                className: reportData.student.className,
+                rollNumber: reportData.student.rollNumber,
+                today: getTodayLabel(),
+                rows: reportData.rows,
+                summary: reportData.summary
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Could not load attendance reports.");
+    }
+});
+
 app.get("/students/announcements", requireLogin, async (req, res) => {
     const studentId = req.session.relatedId || Number(req.query.student_id) || 1;
 
